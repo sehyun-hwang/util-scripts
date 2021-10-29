@@ -1,7 +1,8 @@
 set -e
 
-AWS="aws"
+AWS=aws
 NAME=Node
+REGION=`aws configure get region`
 ZIP=nodejs.zip
 cd /mnt/volatile/Lambda
 
@@ -12,6 +13,6 @@ echo $VERSION
 for x in `$AWS lambda list-functions --output json | jq -r '.Functions[] | select(has("Runtime")) | select( .Runtime | startswith("nodejs")) | .FunctionName'`; do
     echo $x
     $AWS lambda update-function-configuration --function-name $x \
-    --layers arn:aws:lambda:$AWS_DEFAULT_REGION:$ACCOUNT:layer:$NAME:$VERSION \
+    --layers arn:aws:lambda:$REGION:$ACCOUNT:layer:$NAME:$VERSION \
     | jq .FunctionName
 done

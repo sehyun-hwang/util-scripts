@@ -1,24 +1,27 @@
 set -e
 
+REPOSITORY=nextlab
 [ -z "$NAME" ] && NAME=`basename $PWD`
 BUILD="$NAME`[ -z "$TAG" ] || echo ':'`$TAG"
-PUSH="nextlab:$NAME`[ -z "$TAG" ] || echo -`$TAG"
-URL=$ACCOUNT.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
-URI=$URL/$PUSH
+REGION=`aws configure get region`
+URL=$ACCOUNT.dkr.ecr.$REGION.amazonaws.com
+URI="$URL/$REPOSITORY:`echo $BUILD | sed 's/:/-/g'`"
 which podman && FORMAT="--format v2s2"
 
 echo Building $BUILD
 docker build . -t $BUILD
-
 echo Tagging $BUILD $URI
 docker tag $BUILD $URI
 
 
 echo Logging into account $ACCOUNT
-TOKEN=`jq -r '.auths["'$URL'"].auth' $XDG_RUNTIME_DIR/containers/auth.json` curl --fail --header "Authorization: Basic $TOKEN" https://$URL/v2/ \
-|| aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $URL
+TOKEN=`jq -r '.auths["'$URL'"].auth' $XDG_RUNTIME_DIR/containers/auth.json` \
+&& curl --fail -H "Authorization: Basic $TOKEN" https://$URL/v2/$REPOSITORY/tags/list -o /dev/null \
+|| aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $URL
+
 
 echo Pushing to $URI
+export TMPDIR=/volatile/cache/tmp
 docker push $FORMAT $URI
 docker untag $URI
 
