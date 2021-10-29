@@ -3,6 +3,7 @@ set -e
 S3=nextlab
 
 ARG=$1
+echo $ARG
 [ ! -f package.json ] || AWSARG=$(jq -r '.CLI // ""' package.json)
 
 [ -z "$NAME" ] && NAME=$(basename $PWD)
@@ -10,21 +11,23 @@ ARG=$1
 echo Lambda Function: $NAME
 
 invoke () {
-    aws $AWSARG lambda invoke --function-name $NAME \
+    echo $1
+    aws $AWSARG lambda invoke --function-name $NAME $1 \
         `[[ -f Payload.json ]] && echo --payload fileb://Payload.json` \
         --log-type Tail \
         /dev/stdout | (jq -r .LogResult | base64 -d)
+    echo invoked
     exit
 }
 
-[ "$ARG" == "invoke" ] && invoke
-
+[ "$ARG" = invoke ] && invoke "$2"
 ls $(< Lambda.txt) || ls
 
 DIR=${PWD##*/}
 cd ..
-zip -rFS $DIR/$NAME.zip $(sed "s/^/$DIR\//" $DIR/Lambda.txt || echo $DIR)
+zip -rFS $DIR/$NAME.zip $(sed "s/^/$DIR\//" $DIR/Lambda.txt || echo $DIR) -x '*/.git/*' -x '*/__pycache__/*'
 cd $DIR
+
 if (( `stat --printf="%s" $NAME.zip` < 60000000 )); then
     aws $AWSARG lambda update-function-code --function-name $NAME --zip-file fileb://$NAME.zip | cat
 else
@@ -33,4 +36,4 @@ else
     #aws s3 rm s3://hwangsehyun/$NAME
 fi
 
-invoke
+invoke "$2"
