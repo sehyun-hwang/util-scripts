@@ -35,6 +35,7 @@ def get_efs():
 
 
 USER = {
+    "AmazonLinux2": 'ec2-user',
     "Amazon Linux": 'ec2-user',
     "NVIDIA": 'ec2-user',
     "Debian": 'admin',
@@ -54,7 +55,7 @@ def choose_instance():
     # pprint(instances)
 
     images = describe_images([instance['ImageId'] for instance in instances])
-
+    print(images)
     descriptions = [([': '.join(x.values()) for x in instance.get('Tags', {})],
                      instance['InstanceType'], images[instance['ImageId']])
                     for instance in instances]
