@@ -1,0 +1,7 @@
+#!/bin/bash
+set -e
+
+EXPRESS_PATH=`node -e "console.log(require.resolve('utils/Express'))"`
+echo $EXPRESS_PATH $@
+
+node $EXPRESS_PATH $@
