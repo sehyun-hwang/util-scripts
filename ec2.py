@@ -1,16 +1,6 @@
 #!/usr/bin/env python3
 
-from pprint import pprint
 from os import environ
-import termios
-import sys
-import tty
-from fcntl import ioctl
-from struct import unpack
-from select import select
-from paramiko.py3compat import u
-from socket import timeout
-import curses
 
 import boto3
 from simple_term_menu import TerminalMenu
@@ -74,7 +64,7 @@ def choose_instance():
                    key_filename=f'{environ["HOME"]}/.ssh/Default.pem')
     stdout = client.exec_command('ls /mnt')[1].read()
 
-    if (len(stdout)):
+    if len(stdout):
         print(stdout)
     else:
         print('Mounting EFS')
@@ -88,10 +78,10 @@ def choose_instance():
     open_shell(client)
 
 
-def describe_images(id):
+def describe_images(image_ids):
     return {
         x['ImageId']: x['Description']
-        for x in ec2.describe_images(ImageIds=id)['Images']
+        for x in ec2.describe_images(ImageIds=image_ids)['Images']
     }
 
 
