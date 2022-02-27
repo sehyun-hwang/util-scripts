@@ -15,7 +15,7 @@ docker tag $BUILD $URI
 
 
 echo Logging into account $ACCOUNT
-TOKEN=`jq -r '.auths["'$URL'"].auth' $XDG_RUNTIME_DIR/containers/auth.json` \
+TOKEN=`jq -r ".auths[$URL].auth" $XDG_RUNTIME_DIR/containers/auth.json` \
 && curl --fail -H "Authorization: Basic $TOKEN" https://$URL/v2/$REPOSITORY/tags/list -o /dev/null \
 || aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $URL
 
