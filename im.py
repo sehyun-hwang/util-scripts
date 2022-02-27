@@ -1,3 +1,8 @@
+from urllib.request import urlopen
+from pathlib import Path
+from io import BytesIO
+from PIL import Image
+import cv2
 import requests
 
 
@@ -5,13 +10,6 @@ def imshow(img, name=''):
     if type(img) is ndarray:
         img = cv2.imencode('.png', img)[1]
     requests.post('https://proxy.hwangsehyun.com/imshow/', files={"File": img})
-
-
-import cv2
-from PIL import Image
-from io import BytesIO
-from pathlib import Path
-from urllib.request import urlopen
 
 
 def imread(img):
