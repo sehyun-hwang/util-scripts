@@ -33,4 +33,4 @@ find . -maxdepth $DEPTH | while read x; do
 done
 
 aws s3 sync --no-sign-request --endpoint-url https://nextlab.hwangsehyun.com:41443/s3 .backup s3://hwangsehyun/backup
-ssh nextlab /usr/local/bin/aws s3 sync --no-sign-request --endpoint-url http://localhost/s3 s3://hwangsehyun/backup backup2
+ssh nextlab /opt/homebrew/bin/aws s3 sync --no-sign-request --endpoint-url http://localhost/s3 s3://hwangsehyun/backup backup2
