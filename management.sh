@@ -4,4 +4,4 @@ read -p "Enter fullname: " fullname
 read -p "Enter user: " user
 echo $fullname $user
 
-echo foo bar | jq --raw-input 'split( " ")'
+echo foo bar | jq --raw-input 'split(" ")'
