@@ -41,6 +41,7 @@ def open_shell(connection, remote_name='SSH server'):
     # invoke_shell with default options is vt100 compatible
     # which is exactly what you want for an OpenSSH imitation
     channel = connection.invoke_shell(term='xterm-256color')
+    channel.send('fish\n')
 
     def resize_pty():
         # resize to match terminal size
