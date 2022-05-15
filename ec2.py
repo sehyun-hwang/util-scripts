@@ -10,6 +10,16 @@ from interactive_shell import open_shell
 ec2 = boto3.client('ec2')
 
 
+USER = {
+    "AmazonLinux2": 'ec2-user',
+    "Amazon Linux": 'ec2-user',
+    "NVIDIA": 'ec2-user',
+    "Debian": 'admin',
+    "Ubuntu": 'ubuntu',
+    "CentOS": 'centos',
+}
+
+
 def get_efs():
     efs = None
     with open('/etc/fstab') as file:
@@ -22,16 +32,6 @@ def get_efs():
     efs = efs.split(':')[0]
     print(efs)
     return efs
-
-
-USER = {
-    "AmazonLinux2": 'ec2-user',
-    "Amazon Linux": 'ec2-user',
-    "NVIDIA": 'ec2-user',
-    "Debian": 'admin',
-    "Ubuntu": 'ubuntu',
-    "CentOS": 'centos',
-}
 
 
 def choose_instance():
@@ -50,13 +50,18 @@ def choose_instance():
                      instance['InstanceType'], images[instance['ImageId']])
                     for instance in instances]
     index = TerminalMenu(map(str, descriptions)).show()
+    if not index:
+        return
     instance = instances[index]
     image = images[instance['ImageId']]
 
-    user = next((value for key, value in USER.items() if key in image), None)
+    user = next(value for key, value in USER.items() if key in image)
     ip = instance['PrivateIpAddress']
     print(f'Connecting to {user}@{ip}')
+    return user, ip
 
+
+def init_instance(user, ip):
     client = SSHClient()
     client.load_system_host_keys()
     client.connect(ip,
@@ -71,11 +76,13 @@ def choose_instance():
         stdout, stderr = client.exec_command(
             f'sudo mount -t efs {get_efs()} /mnt')[1:]
         stdout, stderr = stdout.read(), stderr.read()
-        assert not stdout
-        assert not stderr
-        print('EFS mounted')
 
-    open_shell(client)
+        if stdout or stderr:
+            print('EFS mount failed')
+            print(stdout, stderr)
+        else:
+            print('EFS mounted')
+    return client
 
 
 def describe_images(image_ids):
@@ -85,5 +92,8 @@ def describe_images(image_ids):
     }
 
 
-choose_instance()
-#print(describe_images(['ami-0b6d6d4ad3367c8f0', 'ami-0b6d6d4ad3367c8f0']))
+if __name__ == '__main__':
+    #print(describe_images(['ami-0b6d6d4ad3367c8f0', 'ami-0b6d6d4ad3367c8f0']))
+    instance = choose_instance()
+    client = init_instance(*instance)
+    open_shell(client)
