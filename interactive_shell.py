@@ -1,6 +1,5 @@
-#https://github.com/sirosen/paramiko-shell/blob/master/interactive_shell.py
+# https://github.com/sirosen/paramiko-shell/blob/master/interactive_shell.py
 
-import paramiko
 import sys
 import os
 import subprocess
@@ -8,9 +7,10 @@ import select
 import socket
 import termios
 import tty
-
 import fcntl
 import struct
+
+import paramiko
 
 
 def open_shell(connection, remote_name='SSH server'):
@@ -41,11 +41,12 @@ def open_shell(connection, remote_name='SSH server'):
     # invoke_shell with default options is vt100 compatible
     # which is exactly what you want for an OpenSSH imitation
     channel = connection.invoke_shell(term='xterm-256color')
+    channel.send('fish\n')
 
     def resize_pty():
         # resize to match terminal size
         tty_height, tty_width = \
-                subprocess.check_output(['stty', 'size']).split()
+            subprocess.check_output(['stty', 'size']).split()
 
         # try to resize, and catch it if we fail due to a closed connection
         try:
@@ -72,7 +73,7 @@ def open_shell(connection, remote_name='SSH server'):
             # and stdin are ready for reading
             # this is the block until data is ready
             read_ready, write_ready, exception_list = \
-                    select.select([channel, sys.stdin], [], [])
+                select.select([channel, sys.stdin], [], [])
             wat = fcntl.ioctl(read_ready[0].fileno(), termios.FIONREAD, "  ")
             doublewat = struct.unpack('h', wat)[0]
 

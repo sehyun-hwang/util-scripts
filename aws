@@ -1,2 +1,2 @@
 #!/bin/bash
-PYTHONPATH=/volatile/src/awscli python3 -m awscli $@
+PYTHONPATH=/volatile/src/awscli python -m awscli $@
