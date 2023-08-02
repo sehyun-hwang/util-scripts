@@ -1,6 +1,6 @@
 #!/bin/env fish
 
-#echo $argv
+#echo $argv >&2
 #status dirname
 set SECRETS (cat (status dirname)/.secret.csv)
 
@@ -10,7 +10,7 @@ for X in $SECRETS
     if contains $LIST[1] $argv
         set -x $LIST[1] $LIST[2]
         echo Setting $LIST[1] 1>&2
-        echo $LIST[2]
+        echo $LIST[2] 1>&2
     end
 end
 
@@ -23,3 +23,4 @@ for I in (seq (count $argv))
 end
 
 echo 'Executable not found' 1>&2
+exit 1

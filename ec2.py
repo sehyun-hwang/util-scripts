@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 from os import environ
 
@@ -13,9 +13,10 @@ ec2 = boto3.client('ec2')
 USER = {
     "AmazonLinux2": 'ec2-user',
     "Amazon Linux": 'ec2-user',
-    "NVIDIA": 'ec2-user',
+    "NVIDIA": 'ubuntu',
     "Debian": 'admin',
     "Ubuntu": 'ubuntu',
+    "CentOS-Stream": 'ec2-user',
     "CentOS": 'centos',
 }
 

@@ -1,0 +1,11 @@
+[user]
+	name = Sehyun Hwang
+	email = hwanghyun3@gmail.com
+
+[core]
+	editor = vim
+	excludesfile = /home/${USER}/.gitignore
+
+[init]
+	defaultBranch = main
+

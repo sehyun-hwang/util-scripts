@@ -1,1 +1,0 @@
-lxc config set nestc1 security.nesting true
