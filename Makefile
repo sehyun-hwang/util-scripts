@@ -2,13 +2,14 @@
 # Constants #
 #############
 
-BLOB_DIR := /volatile
 ifndef HOME
 $(error $$HOME is not set)
 endif
 ifndef USER
 $(error $$USER is not set)
 endif
+BLOB_DIR := /volatile
+# BLOB_DIR := ${HOME}/volatile
 
 ###########
 # Cloud 9 #
@@ -55,10 +56,18 @@ code-tunnel:
 ###########
 
 AWSCLI_DIR := ${BLOB_DIR}/src/awscli
+AWSCLI_WHEEL := $(wildcard ${AWSCLI_DIR}/awscli-*-py3-none-any.whl)
+ifeq (${AWSCLI_WHEEL},)
+AWSCLI_WHEEL := ${AWSCLI_DIR}/awscli-$(shell curl -s https://api.github.com/repos/aws/aws-cli/tags'?per_page=1' | jq -r .[0].name)-py3-none-any.whl
+endif
 
-${AWSCLI_DIR}/bin/aws:
+${AWSCLI_WHEEL}:
 	mkdir -p ${AWSCLI_DIR} && cd ${AWSCLI_DIR} \
-	&& pip install -t . -U https://github.com/aws/aws-cli/archive/v2.zip \
+	&& pip wheel https://github.com/aws/aws-cli/archive/v2.zip --no-deps
+
+${AWSCLI_DIR}/bin/aws: ${AWSCLI_WHEEL}
+	cd ${AWSCLI_DIR} \
+	&& pip install -t . $< \
 	&& VERSION=$$(python -c 'import awscli; print(awscli.__version__)') \
 	&& echo $$VERSION \
 	&& docker create --name awscli amazon/aws-cli:$$VERSION \
@@ -84,7 +93,7 @@ ${HOME}/.local/bin/aws: | ${AWSCLI_DIR}/bin/aws
 #######################
 
 .PHONY: shell
-shell: ${HOME}/.bash_profile ${HOME}/.config/fish/config.fish ${HOME}/.gitignore ${HOME}/.gitconfig
+shell: ${HOME}/.bash_profile ${HOME}/.config/fish/config.fish ${HOME}/.gitignore ${HOME}/.gitconfig ${HOME}/.ssh/id_ed25519
 
 ${HOME}/.bash_profile: bash_profile.sh
 	cp $< $@
@@ -101,8 +110,10 @@ ${HOME}/.gitconfig: ${HOME}/.gitignore
 	envsubst < gitconfig > $@
 
 ${HOME}/.ssh/id_ed25519: id_ed25519
-	cp $< $@
-	ssh-keygen -pf $@
+	ssh-keygen -pf $< -N ''
+	chmod 400 $<
+	mv $< $@
+	git checkout HEAD -- $<
 
 ###########
 # Scripts #
