@@ -32,8 +32,7 @@ esac
 # pnpm end
 
 export AWS_SDK_LOAD_CONFIG=1
-export DOCKER_HOST=unix:///run/user/1000/podman/podman.sock
-#export DOCKER_BUILDKIT=0
+export DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock
 export ESLINT_USE_FLAT_CONFIG=true
 
 [ -z "$C9_HOSTNAME" ] || exec fish
