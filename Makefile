@@ -8,8 +8,12 @@ endif
 ifndef USER
 $(error $$USER is not set)
 endif
+
 BLOB_DIR := /volatile
-# BLOB_DIR := ${HOME}/volatile
+ifeq ($(wildcard ${BLOB_DIR}),)
+BLOB_DIR := ${HOME}/volatile
+endif
+$(info BLOB_DIR ${BLOB_DIR})
 
 ###########
 # Cloud 9 #
@@ -17,7 +21,10 @@ BLOB_DIR := /volatile
 
 .PHONY: cloud9
 cloud9:
-	curl -fL https://d3kgj69l4ph6w4.cloudfront.net/static/c9-install-2.0.0.sh | bash
+	curl https://d3kgj69l4ph6w4.cloudfront.net/static/c9-install-2.0.0.sh \
+	| sed -e 's=DOWNLOAD "$$PROD_CLOUDFRONT_URL/libevent-2.1.8-stable.tar.gz" libevent-2.1.8-stable.tar.gz=DOWNLOAD https://github.com/libevent/libevent/releases/download/release-2.1.10-stable/libevent-2.1.10-stable.tar.gz libevent-2.1.10-stable.tar.gz=' \
+	-e 's/libevent-2.1.8/libevent-2.1.10/' -e 's/-nc/-N/' \
+	| bash
 
 ###########
 # VS Code #
@@ -84,6 +91,7 @@ ${HOME}/.local/bin/aws: | ${AWSCLI_DIR}/bin/aws
 # Containers #
 ##############
 
+# systemctl --user enable --now podman.socket
 # mkdir /volatile/containers
 # ln -s /volatile/containers /home/ec2-user/.local/share/containers
 # sudo modprobe iptable-nat
@@ -110,6 +118,7 @@ ${HOME}/.gitconfig: ${HOME}/.gitignore
 	envsubst < gitconfig > $@
 
 ${HOME}/.ssh/id_ed25519: id_ed25519
+	chmod 600 $<
 	ssh-keygen -pf $< -N ''
 	chmod 400 $<
 	mv $< $@
