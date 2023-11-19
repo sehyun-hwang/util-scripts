@@ -67,39 +67,28 @@ code-tunnel: ${HOME}/.local/bin/code
 # AWS CLI #
 ###########
 
-AWSCLI_DIR := ${BLOB_DIR}/src/awscli
-AWSCLI_WHEEL := $(firstword $(wildcard ${AWSCLI_DIR}/../awscli-*-py3-none-any.whl))
+AWSCLI_DIR := .
+AWSCLI_WHEEL := $(firstword $(wildcard ${AWSCLI_DIR}/awscli-*-py3-none-any.whl))
 ifeq (${AWSCLI_WHEEL},)
-AWSCLI_WHEEL := ${AWSCLI_DIR}/../awscli-$(shell curl -s https://api.github.com/repos/aws/aws-cli/tags'?per_page=1' | jq -r .[0].name)-py3-none-any.whl
+AWSCLI_WHEEL := ${AWSCLI_DIR}/awscli-$(shell curl -s 'https://api.github.com/repos/aws/aws-cli/tags?per_page=1' | jq -r .[0].name)-py3-none-any.whl
 endif
+AWSCLI_VENV := $(shell pipx environment -v PIPX_LOCAL_VENVS)/awscli
 
 ${AWSCLI_WHEEL}:
-	mkdir -p $(dir $@) && cd $(dir $@) \
-	&& pip wheel https://github.com/aws/aws-cli/archive/v2.zip --no-deps
+	pip wheel https://github.com/aws/aws-cli/archive/v2.zip --no-deps
+${HOME}/.local/bin/aws: ${AWSCLI_WHEEL}
+	pipx install $<
 
-${AWSCLI_DIR}/bin/aws: ${AWSCLI_WHEEL}
-	cd ${AWSCLI_DIR} \
-	&& pip install -t . $< \
+${AWSCLI_VENV}/lib/%/site-packages/awscli/data/ac.index: | ${AWSCLI_VENV}/lib/%/site-packages
+	cd $| \
 	&& VERSION=$$(python -c 'import awscli; print(awscli.__version__)') \
 	&& echo $$VERSION \
-	&& docker create --name awscli amazon/aws-cli:$$VERSION \
-	&& docker cp awscli:/usr/local/aws-cli/v2/$$VERSION/dist/awscli/data/ac.index awscli/data/ \
-	&& docker rm awscli
+	&& NAME=$$(docker create amazon/aws-cli:$$VERSION) \
+	&& docker cp $$NAME:/usr/local/aws-cli/v2/$$VERSION/dist/awscli/data/ac.index $@ \
+	&& docker rm $$NAME
 
-${HOME}/.local/bin/aws: | ${AWSCLI_DIR}/bin/aws
-	echo '#!/bin/bash' > $@
-	echo 'PYTHONPATH=${AWSCLI_DIR} python -m awscli "$$@"' >> $@
-	chmod +x $@
-	$@ --version
-
-##############
-# Containers #
-##############
-
-# systemctl --user enable --now podman.socket
-# mkdir /volatile/containers
-# ln -s /volatile/containers /home/ec2-user/.local/share/containers
-# sudo modprobe iptable-nat
+.PHONY: awscli
+awscli: ${AWSCLI_VENV}$(shell python -c 'import site; print(site.USER_SITE.replace(site.USER_BASE, ""))')/awscli/data/ac.index
 
 #######################
 # Shell Configuration #
@@ -113,8 +102,6 @@ ${HOME}/.bash_profile: bash_profile.sh
 
 ${HOME}/.config/fish/config.fish: config.fish ${HOME}/.local/bin/aws
 	cp $< $@
-	# https://github.com/aws/aws-cli/issues/1079#issuecomment-541997810
-	echo "complete --command aws --no-files --arguments '(begin; set --local --export COMP_SHELL fish; set --local --export COMP_LINE (commandline); PYTHONPATH=${AWSCLI_DIR} ${AWSCLI_DIR}/bin/aws_completer | sed \'s/ $//\'; end)'" >> $@
 
 ${HOME}/.gitignore:
 	cp gitignore $@
@@ -158,6 +145,7 @@ ${PYTHON_SITE_DIR}/%: % | ${EC2_SSH_REQUIREMENTS}
 ##########
 # Backup #
 ##########
+
 $(shell	mkdir -p backup)
 
 .PHONY: backup
@@ -171,6 +159,12 @@ backup/ssh-config.txt: ${HOME}/.ssh/config
 backup/fish.json: ${HOME}/.local/share/fish/fish_history
 	cp $< $@
 
+##############
+# Containers #
+##############
+
+# systemctl --user enable --now podman.socket
+# sudo modprobe iptable-nat
 
 # /usr/share/containers/containers.conf
 # [engine]

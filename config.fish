@@ -13,10 +13,16 @@ if test -d (brew --prefix)"/share/fish/vendor_completions.d"
     set -gx fish_complete_path $fish_complete_path (brew --prefix)/share/fish/vendor_completions.d
 end
 
-# tabtab source for pnpm package
-# uninstall by removing these lines
-[ -f ~/.config/tabtab/fish/__tabtab.fish ]; and . ~/.config/tabtab/fish/__tabtab.fish; or true
+# https://github.com/aws/aws-cli/issues/1079#issuecomment-541997810
+complete --command aws --no-files --arguments '(begin; set --local --export COMP_SHELL fish; set --local --export COMP_LINE (commandline); aws_completer | sed \'s/ $//\'; end)'
 
-fish_add_path (yarn global bin)
+# pnpm
+set -gx PNPM_HOME ~/.local/share/pnpm
+if not string match -q -- $PNPM_HOME $PATH
+  set -gx PATH "$PNPM_HOME" $PATH
+end
+# pnpm end
+
+fish_add_path ~/.local/bin (yarn global bin)
 export AWS_SDK_LOAD_CONFIG=1
 export DOCKER_HOST=unix:///run/user/(id -u)/podman/podman.sock
