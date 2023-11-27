@@ -70,44 +70,46 @@ code-tunnel: ${HOME}/.local/bin/code
 AWSCLI_DIR := .
 AWSCLI_WHEEL := $(firstword $(wildcard ${AWSCLI_DIR}/awscli-*-py3-none-any.whl))
 ifeq (${AWSCLI_WHEEL},)
-AWSCLI_WHEEL := ${AWSCLI_DIR}/awscli-$(shell curl -s 'https://api.github.com/repos/aws/aws-cli/tags?per_page=1' | jq -r .[0].name)-py3-none-any.whl
+AWSCLI_WHEEL := ${AWSCLI_DIR}/awscli-$(shell curl -fs 'https://api.github.com/repos/aws/aws-cli/tags?per_page=1' | jq -r .[0].name)-py3-none-any.whl
 endif
 AWSCLI_VENV := $(shell pipx environment -v PIPX_LOCAL_VENVS)/awscli
 
 ${AWSCLI_WHEEL}:
 	pip wheel https://github.com/aws/aws-cli/archive/v2.zip --no-deps
 ${HOME}/.local/bin/aws: ${AWSCLI_WHEEL}
-	pipx install $<
+	pipx install $< || pipx install --python $$(which python) $<
+	$@ --version
 
-${AWSCLI_VENV}/lib/%/site-packages/awscli/data/ac.index: | ${AWSCLI_VENV}/lib/%/site-packages
-	cd $| \
+${AWSCLI_VENV}/lib/%/site-packages/awscli/data/ac.index: ${HOME}/.local/bin/aws
+	cd ${AWSCLI_VENV}/lib/*/site-packages \
 	&& VERSION=$$(python -c 'import awscli; print(awscli.__version__)') \
 	&& echo $$VERSION \
 	&& NAME=$$(docker create amazon/aws-cli:$$VERSION) \
 	&& docker cp $$NAME:/usr/local/aws-cli/v2/$$VERSION/dist/awscli/data/ac.index $@ \
 	&& docker rm $$NAME
 
+# https://docs.python.org/3/library/sysconfig.html#user-scheme
 .PHONY: awscli
-awscli: ${AWSCLI_VENV}$(shell python -c 'import site; print(site.USER_SITE.replace(site.USER_BASE, ""))')/awscli/data/ac.index
+awscli: $(shell python -c 'from pathlib import Path; import site, sysconfig; print(Path("${AWSCLI_VENV}") / Path(sysconfig.get_path("purelib", "posix_user")).relative_to(site.USER_BASE) / "awscli/data/ac.index")')
 
 #######################
 # Shell Configuration #
 #######################
 
 .PHONY: shell
-shell: ${HOME}/.bash_profile ${HOME}/.config/fish/config.fish ${HOME}/.gitignore ${HOME}/.gitconfig ${HOME}/.ssh/id_ed25519
+shell: $(addprefix ${HOME}/,.bash_profile .zshrc .config/fish/config.fish .gitignore .gitconfig .ssh/id_ed25519)
 
 ${HOME}/.bash_profile: bash_profile.sh
 	cp $< $@
-
-${HOME}/.config/fish/config.fish: config.fish ${HOME}/.local/bin/aws
+${HOME}/.zshrc: zshrc
+	cp $< $@
+${HOME}/.config/fish/config.fish: config.fish
 	cp $< $@
 
-${HOME}/.gitignore:
-	cp gitignore $@
-
-${HOME}/.gitconfig: ${HOME}/.gitignore
-	envsubst < gitconfig > $@
+${HOME}/.gitignore: gitignore
+	cp $< $@
+${HOME}/.gitconfig: gitconfig
+	envsubst < $< > $@
 
 ${HOME}/.ssh/id_ed25519: id_ed25519
 	chmod 600 $<

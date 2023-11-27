@@ -1,8 +1,9 @@
-# TODO: brew path switch case
-# switch (uname)
-#   case Darwin
-#   case Linux
-# end
+switch (uname)
+    case Darwin
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+    case Linux
+        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+end
 
 # https://docs.brew.sh/Shell-Completion
 if test -d (brew --prefix)"/share/fish/completions"
@@ -19,10 +20,13 @@ complete --command aws --no-files --arguments '(begin; set --local --export COMP
 # pnpm
 set -gx PNPM_HOME ~/.local/share/pnpm
 if not string match -q -- $PNPM_HOME $PATH
-  set -gx PATH "$PNPM_HOME" $PATH
+    set -gx PATH "$PNPM_HOME" $PATH
 end
 # pnpm end
 
+if not test -S (realpath /var/run/docker.sock)
+    export DOCKER_HOST=unix:///run/user/(id -u)/podman/podman.sock
+end
+
 fish_add_path ~/.local/bin (yarn global bin)
 export AWS_SDK_LOAD_CONFIG=1
-export DOCKER_HOST=unix:///run/user/(id -u)/podman/podman.sock
