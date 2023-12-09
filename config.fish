@@ -1,8 +1,8 @@
 switch (uname)
     case Darwin
-        eval "$(/opt/homebrew/bin/brew shellenv)"
+        eval (/opt/homebrew/bin/brew shellenv)
     case Linux
-        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+        eval (/home/linuxbrew/.linuxbrew/bin/brew shellenv)
 end
 
 # https://docs.brew.sh/Shell-Completion
