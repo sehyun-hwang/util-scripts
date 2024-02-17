@@ -2,7 +2,7 @@
 
 #echo $argv >&2
 #status dirname
-set SECRETS (cat (status dirname)/.secret.csv)
+set SECRETS (cat ~/.secret.csv)
 
 for X in $SECRETS
     set LIST (string split ' ' $X)
