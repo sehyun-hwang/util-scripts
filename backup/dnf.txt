@@ -1,0 +1,32 @@
+ID     | Command line                                                                                             | Date and time    | Action(s)      | Altered
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+    30 | install podman-compose                                                                                   | 2023-08-11 16:44 | Install        |    7   
+    29 | install python3-virtualenv                                                                               | 2023-08-11 05:58 | Install        |    5   
+    28 | upgrade                                                                                                  | 2023-08-10 08:25 | C, E, I, U     |   37 EE
+    27 | install socat                                                                                            | 2023-08-07 14:58 | Install        |    1   
+    26 | install words                                                                                            | 2023-08-07 14:12 | Install        |    1   
+    25 | install hiredis-devel                                                                                    | 2023-08-07 11:03 | Install        |    2   
+    24 | install iotop                                                                                            | 2023-08-07 05:17 | Install        |    1   
+    23 | install tree                                                                                             | 2023-08-02 11:51 | Install        |    1   
+    22 | install libcurl-devel                                                                                    | 2023-08-02 09:20 | Install        |    1   
+    21 | upgrade                                                                                                  | 2023-08-02 09:14 | I, U           |  164 EE
+    20 | install g++                                                                                              | 2023-08-02 07:53 | I, U           |    3   
+    19 | install cmake                                                                                            | 2023-08-02 07:52 | Install        |    5   
+    18 | install jq                                                                                               | 2023-08-02 07:37 | Install        |    2   
+    17 | install gcc glibc-static                                                                                 | 2023-08-02 06:21 | Install        |    2   
+    16 | install gcc                                                                                              | 2023-08-02 06:21 | I, U           |   16   
+    15 | install wget                                                                                             | 2023-08-01 14:24 | Install        |    1   
+    14 | install podman-docker                                                                                    | 2023-08-01 14:10 | I, U           |   33   
+    13 | install python3-pip                                                                                      | 2023-08-01 14:09 | Install        |    1   
+    12 | install nodejs                                                                                           | 2023-08-01 14:09 | Install        |    4   
+    11 | install fish                                                                                             | 2023-08-01 14:07 | Install        |    3  <
+    10 | install epel-release epel-next-release                                                                   | 2023-08-01 14:06 | Install        |    2 ><
+     9 | -y install build/amazon-efs-utils-1.35.0-1.el9.noarch.rpm                                                | 2023-08-01 13:59 | I, U           |   20 >E
+     8 | install rpm-build                                                                                        | 2023-08-01 13:58 | I, U           |   41   
+     7 | install make                                                                                             | 2023-08-01 13:58 | Install        |    1   
+     6 | install git                                                                                              | 2023-08-01 13:57 | Install        |   67   
+     5 | install vim                                                                                              | 2023-08-01 13:43 | Install        |    4   
+     4 | -y --best upgrade                                                                                        | 2023-01-10 14:22 | I, U           |   56 E<
+     3 | -C -y --noplugins remove firewalld --setopt=clean_requirements_on_remove=1                               | 2022-12-19 11:28 | Removed        |   13 >E
+     2 | -C -y --noplugins remove linux-firmware                                                                  | 2022-12-19 11:28 | Removed        |    2   
+     1 |                                                                                                          | 2022-12-19 11:24 | Install        |  363 EE
