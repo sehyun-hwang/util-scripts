@@ -1,17 +1,14 @@
-switch (uname)
-    case Darwin
-        eval (/opt/homebrew/bin/brew shellenv)
-    case Linux
-        eval (/home/linuxbrew/.linuxbrew/bin/brew shellenv)
-end
+set BREW_EXECUTABLE (ls /home/linuxbrew/.linuxbrew/bin/brew /opt/homebrew/bin/brew 2> /dev/null)
 
-# https://docs.brew.sh/Shell-Completion
-if test -d (brew --prefix)"/share/fish/completions"
-    set -gx fish_complete_path $fish_complete_path (brew --prefix)/share/fish/completions
-end
+if [ "$BREW_EXECUTABLE" ]
+    # https://docs.brew.sh/Shell-Completion
+    if test -d (brew --prefix)"/share/fish/completions"
+        set -gx fish_complete_path $fish_complete_path (brew --prefix)/share/fish/completions
+    end
 
-if test -d (brew --prefix)"/share/fish/vendor_completions.d"
-    set -gx fish_complete_path $fish_complete_path (brew --prefix)/share/fish/vendor_completions.d
+    if test -d (brew --prefix)"/share/fish/vendor_completions.d"
+        set -gx fish_complete_path $fish_complete_path (brew --prefix)/share/fish/vendor_completions.d
+    end
 end
 
 # https://github.com/aws/aws-cli/issues/1079#issuecomment-541997810
