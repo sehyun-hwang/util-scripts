@@ -1,5 +1,0 @@
-ln -s /home/linuxbrew/.linuxbrew/Cellar/libffi/*/lib64/libffi.so.8 /home/linuxbrew/.linuxbrew/lib/libffi.so.8
-
-brew deps hadolint --include-build --missing | grep -v -E 'cmake|gcc|llvm|rust|ninja|swig|pkg-config|go' | xargs brew install --ignore-dependencies 
-
-rm /home/linuxbrew/.linuxbrew/Homebrew/Library/Homebrew/shims/linux/super/gcc
