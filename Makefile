@@ -29,7 +29,7 @@ ${HOME}/.c9:
 	| bash
 
 ${HOME}/.c9/python3/bin/pylint: | ${HOME}/.c9
-	ln -s (which pylint) $@
+	ln -s $$(which pylint) $@
 
 ###########
 # VS Code #
@@ -55,13 +55,12 @@ ${HOME}/.local/bin/code:
 	code --version
 
 code-symlink:
-	mkdir -p ${BLOB_DIR}/vscode ~/.vscode-server
-	ln -s ${BLOB_DIR}/vscode ~/.vscode
+	mkdir -p ${BLOB_DIR}/vscode-server
 	ln -s ${BLOB_DIR}/vscode-server ~/.vscode-server
 
 .PHONY: code-tunnel
-code-tunnel: ${HOME}/.local/bin/code
-	systemd-run -p CPUQuota=100% -p MemoryMax=2.5G -p MemorySwapMax=800M --user --scope code tunnel
+code-tunnel: ${HOME}/.local/bin/code | ${BLOB_DIR}/swap
+	systemd-run -p MemoryMax=2.5G -p MemorySwapMax=2G --user --scope code tunnel
 
 ###########
 # AWS CLI #
@@ -72,7 +71,7 @@ AWSCLI_WHEEL := $(firstword $(wildcard ${AWSCLI_DIR}/awscli-*-py3-none-any.whl))
 ifeq (${AWSCLI_WHEEL},)
 AWSCLI_WHEEL := ${AWSCLI_DIR}/awscli-$(shell curl -fs 'https://api.github.com/repos/aws/aws-cli/tags?per_page=1' | jq -r .[0].name)-py3-none-any.whl
 endif
-AWSCLI_VENV := $(shell pipx environment -v PIPX_LOCAL_VENVS)/awscli
+AWSCLI_VENV := $(shell pipx environment --value PIPX_LOCAL_VENVS)/awscli
 
 ${AWSCLI_WHEEL}:
 	pip wheel https://github.com/aws/aws-cli/archive/v2.zip --no-deps
@@ -84,13 +83,13 @@ ${AWSCLI_VENV}/lib/%/site-packages/awscli/data/ac.index: ${HOME}/.local/bin/aws
 	cd ${AWSCLI_VENV}/lib/*/site-packages \
 	&& VERSION=$$(python -c 'import awscli; print(awscli.__version__)') \
 	&& echo $$VERSION \
-	&& NAME=$$(docker create amazon/aws-cli:$$VERSION) \
+	&& NAME=$$(docker create docker.io/amazon/aws-cli:$$VERSION) \
 	&& docker cp $$NAME:/usr/local/aws-cli/v2/$$VERSION/dist/awscli/data/ac.index $@ \
 	&& docker rm $$NAME
 
-# https://docs.python.org/3/library/sysconfig.html#user-scheme
 .PHONY: awscli
-awscli: $(shell python -c 'from pathlib import Path; import site, sysconfig; print(Path("${AWSCLI_VENV}") / Path(sysconfig.get_path("purelib", "posix_user")).relative_to(site.USER_BASE) / "awscli/data/ac.index")')
+awscli: ${HOME}/.local/bin/aws
+	$(MAKE) $$(pipx runpip awscli show awscli | awk '/^Location:/ {print $$2}')/awscli/data/ac.index
 
 #######################
 # Shell Configuration #
@@ -139,9 +138,10 @@ ${HOME}/.local/bin/resize.sh:
 	cp $< $@
 
 ${EC2_SSH_REQUIREMENTS}:
-	pip install $(subst _,-,$(basename $(notdir ${EC2_SSH_REQUIREMENTS})))
-
-${PYTHON_SITE_DIR}/%: % | ${EC2_SSH_REQUIREMENTS}
+	pip install --user $(subst _,-,$(basename $(notdir ${EC2_SSH_REQUIREMENTS})))
+${PYTHON_SITE_DIR}:
+	mkdir -p $@
+${PYTHON_SITE_DIR}/%: % | ${PYTHON_SITE_DIR} ${EC2_SSH_REQUIREMENTS}
 	cp $< $@
 
 ##########
@@ -151,14 +151,18 @@ ${PYTHON_SITE_DIR}/%: % | ${EC2_SSH_REQUIREMENTS}
 $(shell	mkdir -p backup)
 
 .PHONY: backup
-backup: backup/ssh-config.txt backup/fish.json
-	dnf history > backup/dnf.txt
-	brew leaves > backup/brew.txt
-	pnpm ls -g > backup/pnpm.txt
+backup: backup/ssh-config.txt backup/fish.json backup/vscode.json
+	which dnf && dnf history > backup/dnf.txt
+	which apt && apt-mark showmanual > backup/apt.txt
+	which brew && brew leaves > backup/brew.txt
+	which pnpm && pnpm ls -g > backup/pnpm.txt
+	which yarn && yarn global list > backup/yarn.txt
 
 backup/ssh-config.txt: ${HOME}/.ssh/config
 	cp $< $@
 backup/fish.json: ${HOME}/.local/share/fish/fish_history
+	cp $< $@
+backup/vscode.json: ~/.vscode-server/data/Machine/settings.json
 	cp $< $@
 
 ##############
@@ -172,3 +176,17 @@ backup/fish.json: ${HOME}/.local/share/fish/fish_history
 # [engine]
 # compose_providers = ["/home/linuxbrew/.linuxbrew/bin/docker-compose"]
 # env = ["TMPDIR=/volatile/cache/tmp"]
+
+# sudo touch /etc/containers/nodocker
+# sudo semanage fcontext -a -e /var/lib/containers /volatile/containers
+# sudo restorecon -R /volatile/containers
+
+.PHONY: swap
+swap: ${BLOB_DIR}/swap
+
+${BLOB_DIR}/swap:
+	sudo dd if=/dev/zero of=$@ bs=128M count=32
+	sudo chmod 600 $@
+	sudo mkswap $@
+	sudo swapon $@
+	sudo swapon -s
