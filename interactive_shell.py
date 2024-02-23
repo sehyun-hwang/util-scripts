@@ -85,13 +85,12 @@ def open_shell(connection, remote_name='SSH server'):
                     out = channel.recv(1024)
 
                     # remote close
-                    if len(out) == 0:
-                        is_alive = False
-                    else:
+                    if len(out):
                         # rely on 'print' to correctly handle encoding
                         sys.stdout.buffer.write(out)
                         sys.stdout.flush()
-
+                    else:
+                        is_alive = False
                 # do nothing on a timeout, as this is an ordinary condition
                 except socket.timeout:
                     pass
@@ -107,10 +106,10 @@ def open_shell(connection, remote_name='SSH server'):
                 char = os.read(stdin_fileno, doublewat)
 
                 # if this side of the connection closes, shut down gracefully
-                if len(char) == 0:
-                    is_alive = False
-                else:
+                if len(char):
                     channel.send(char)
+                else:
+                    is_alive = False
 
         # close down the channel for send/recv
         # this is an explicit call most likely redundant with the operations
@@ -122,4 +121,4 @@ def open_shell(connection, remote_name='SSH server'):
     # upon exit and print that connection is closed
     finally:
         termios.tcsetattr(sys.stdin, termios.TCSAFLUSH, oldtty_attrs)
-        print('Paramiko channel to %s closed.' % remote_name)
+        print('Paramiko channel to', remote_name, 'closed')

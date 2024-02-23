@@ -1,23 +1,25 @@
-#!/usr/bin/env python3
-
-from os import environ
+#!/usr/bin/env python
+from pathlib import Path
 
 import boto3
-from simple_term_menu import TerminalMenu
 from paramiko import SSHClient
+from simple_term_menu import TerminalMenu
+
 from interactive_shell import open_shell
 
-ec2 = boto3.client('ec2')
-
-
+KEY_FILE = Path.home() / '.ssh/Default.pem'
 USER = {
     "AmazonLinux2": 'ec2-user',
     "Amazon Linux": 'ec2-user',
-    "NVIDIA": 'ec2-user',
+    "NVIDIA": 'ubuntu',
     "Debian": 'admin',
     "Ubuntu": 'ubuntu',
+    "CentOS-Stream": 'ec2-user',
     "CentOS": 'centos',
 }
+
+assert KEY_FILE.exists()
+ec2 = boto3.client('ec2')
 
 
 def get_efs():
@@ -50,7 +52,7 @@ def choose_instance():
                      instance['InstanceType'], images[instance['ImageId']])
                     for instance in instances]
     index = TerminalMenu(map(str, descriptions)).show()
-    if not index:
+    if index is None:
         return
     instance = instances[index]
     image = images[instance['ImageId']]
@@ -66,7 +68,7 @@ def init_instance(user, ip):
     client.load_system_host_keys()
     client.connect(ip,
                    username=user,
-                   key_filename=f'{environ["HOME"]}/.ssh/Default.pem')
+                   key_filename=str(KEY_FILE))
     stdout = client.exec_command('ls /mnt')[1].read()
 
     if len(stdout):
@@ -93,7 +95,8 @@ def describe_images(image_ids):
 
 
 if __name__ == '__main__':
-    #print(describe_images(['ami-0b6d6d4ad3367c8f0', 'ami-0b6d6d4ad3367c8f0']))
+    # print(describe_images(['ami-0b6d6d4ad3367c8f0', 'ami-0b6d6d4ad3367c8f0']))
     instance = choose_instance()
+    print(instance)
     client = init_instance(*instance)
     open_shell(client)

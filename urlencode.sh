@@ -1,1 +1,0 @@
-node --eval "console.log(encodeURIComponent(process.argv[1]))" "$1"

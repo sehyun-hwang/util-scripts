@@ -1,0 +1,14 @@
+Legend: production dependency, optional only, dev only
+
+/home/ec2-user/.local/share/pnpm/global/5
+
+dependencies:
+aws-cdk 2.89.0
+c9 3.1.3534
+eslint 8.46.0
+npm-check 6.0.1
+prettier 3.0.0
+secretlint 7.0.3
+typedoc 0.24.8
+typescript 5.1.6
+wscat 5.2.0
