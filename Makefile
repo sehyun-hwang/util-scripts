@@ -122,7 +122,7 @@ ${HOME}/.ssh/id_ed25519: id_ed25519
 # Scripts #
 ###########
 
-SCRIPT_FILES := backup.sh ecr.sh lambda.sh resize.sh ec2.py ssh-mac.py secret.fish
+SCRIPT_FILES := backup.sh ecr.sh lambda.sh resize.sh secret.fish ec2.py ssh-mac.py
 # https://www.gnu.org/software/make/manual/html_node/Text-Functions.html
 SCRIPT_FILES := $(SCRIPT_FILES:%=${HOME}/.local/bin/%)
 $(info SCRIPT_FILES ${SCRIPT_FILES})
@@ -135,6 +135,8 @@ ${HOME}/.local/bin/resize.sh:
 	wget -O $@ https://raw.githubusercontent.com/EugenMayer/parted-auto-resize/master/resize.sh
 	chmod +x $@
 ${HOME}/.local/bin/%.sh: %.sh
+	cp $< $@
+${HOME}/.local/bin/%.fish: %.fish
 	cp $< $@
 
 # Python scripts
@@ -163,7 +165,7 @@ ${PYTHON_SITE_DIR}/remoteit_ssh_client.py: | ${PYTHON_SITE_DIR}
 ${HOME}/.local/bin/%.py: %.py ${PYTHON_SITE_DIR}/interactive_shell.py ${PYTHON_SITE_DIR}/remoteit_ssh_client.py | ${EC2_SSH_REQUIREMENTS}
 	echo '#!${PYTHON_VENV}/bin/python' > $@
 	cat $< >> $@
-	chmod +x $@ 
+	chmod +x $@
 
 ##########
 # Backup #
