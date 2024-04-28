@@ -13,7 +13,7 @@ import struct
 import paramiko
 
 
-def open_shell(connection, remote_name='SSH server'):
+def open_shell(connection, remote_name="SSH server"):
     """
     Opens a PTY on a remote server, and allows interactive commands to be run.
     Reassigns stdin to the PTY so that it functions like a full shell, as would
@@ -40,13 +40,12 @@ def open_shell(connection, remote_name='SSH server'):
 
     # invoke_shell with default options is vt100 compatible
     # which is exactly what you want for an OpenSSH imitation
-    channel = connection.invoke_shell(term='xterm-256color')
-    channel.send('fish\n')
+    channel = connection.invoke_shell(term="xterm-256color")
+    channel.send("fish\n")
 
     def resize_pty():
         # resize to match terminal size
-        tty_height, tty_width = \
-            subprocess.check_output(['stty', 'size']).split()
+        tty_height, tty_width = subprocess.check_output(["stty", "size"]).split()
 
         # try to resize, and catch it if we fail due to a closed connection
         try:
@@ -72,10 +71,11 @@ def open_shell(connection, remote_name='SSH server'):
             # use a unix select call to wait until the remote shell
             # and stdin are ready for reading
             # this is the block until data is ready
-            read_ready, write_ready, exception_list = \
-                select.select([channel, sys.stdin], [], [])
+            read_ready, write_ready, exception_list = select.select(
+                [channel, sys.stdin], [], []
+            )
             wat = fcntl.ioctl(read_ready[0].fileno(), termios.FIONREAD, "  ")
-            doublewat = struct.unpack('h', wat)[0]
+            doublewat = struct.unpack("h", wat)[0]
 
             # if the channel is one of the ready objects, print
             # it out 1024 chars at a time
@@ -121,4 +121,4 @@ def open_shell(connection, remote_name='SSH server'):
     # upon exit and print that connection is closed
     finally:
         termios.tcsetattr(sys.stdin, termios.TCSAFLUSH, oldtty_attrs)
-        print('Paramiko channel to', remote_name, 'closed')
+        print("Paramiko channel to", remote_name, "closed")
