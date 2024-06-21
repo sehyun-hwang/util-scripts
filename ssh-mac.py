@@ -18,7 +18,9 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="SSH Argument Parser")
     parser.add_argument("-J", dest="jump_host")
     parser.add_argument("-N")
-    parser.add_argument("-L", dest="tunnels", nargs="+", metavar="port:host:hostport")
+    parser.add_argument(
+        "-L", dest="tunnels", action="append", metavar="port:host:hostport"
+    )
     parser.add_argument("-v", dest="verbose", action="store_true")
     parser.add_argument("host")
 
@@ -44,9 +46,10 @@ def init_instance():
                 username="hwangsehyun",
                 key_filename=str(Path("~/.ssh/id_ed25519").expanduser()),
             )
-            return client
         except SSHException as error:
             logging.exception("ssh exception")
+        else:
+            return client
 
 
 def execute_tunnel(args):
