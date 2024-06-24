@@ -21,7 +21,7 @@ if not string match -q -- $PNPM_HOME $PATH
 end
 # pnpm end
 
-if not test -S (realpath /var/run/docker.sock)
+if not test -S "(realpath /var/run/docker.sock)"
     export DOCKER_HOST=unix:///run/user/(id -u)/podman/podman.sock
 end
 
