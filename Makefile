@@ -142,7 +142,7 @@ ${HOME}/.local/bin/%.fish: %.fish
 # Python scripts
 PYTHON_VENV := ${BLOB_DIR}/venv/python$(shell python -c 'import sysconfig; print(sysconfig.get_python_version())')
 PYTHON_SITE_DIR := $(shell python -c 'import venv; print(venv.EnvBuilder()._venv_path("${PYTHON_VENV}", "purelib"))')
-EC2_SSH_REQUIREMENTS := $(addprefix ${PYTHON_SITE_DIR}/,boto3 paramiko requests simple_term_menu.py)
+EC2_SSH_REQUIREMENTS := $(addprefix ${PYTHON_SITE_DIR}/,boto3 paramiko paramiko_tunnel requests simple_term_menu.py)
 $(info PYTHON_VENV ${PYTHON_VENV})
 $(info PYTHON_SITE_DIR ${PYTHON_SITE_DIR})
 
@@ -156,10 +156,9 @@ ${EC2_SSH_REQUIREMENTS}: | ${PYTHON_SITE_DIR}/requests_http_signature
 	${PYTHON_VENV}/bin/pip install $(subst _,-,$(basename $(notdir ${EC2_SSH_REQUIREMENTS})))
 ${PYTHON_SITE_DIR}/interactive_shell.py: interactive_shell.py | ${PYTHON_SITE_DIR}
 	cp $< $@
-${PYTHON_SITE_DIR}/remoteit_ssh_client.py: | ${PYTHON_SITE_DIR}
+${PYTHON_SITE_DIR}/remoteit_ssh_client.py: remoteit_ssh_client.sed | ${PYTHON_SITE_DIR}
 	curl https://raw.githubusercontent.com/conor-f/remoteit-ssh/main/src/remoteit_ssh/client.py \
-		| sed -e 's/device_details\[0\]\["services"\]\[0\]\["id"\]/next(x\["id"\] for x in device_details\[0\]\["services"\] if x\["name"\] == "SSH")/' \
-			-e 's/^    details =/    return/' \
+		| sed -f $< \
 		> $@
 
 ${HOME}/.local/bin/%.py: %.py ${PYTHON_SITE_DIR}/interactive_shell.py ${PYTHON_SITE_DIR}/remoteit_ssh_client.py | ${EC2_SSH_REQUIREMENTS}
