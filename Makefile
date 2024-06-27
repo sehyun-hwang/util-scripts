@@ -52,6 +52,7 @@ ${HOME}/.local/bin/code:
 	# https://code.visualstudio.com/sha/download?build=stable&os=cli-darwin-arm64
 	curl -fL 'https://code.visualstudio.com/sha/download?build=stable&os=cli-${VSCODE_OS}-${VSCODE_ARCH}' \
 	| tar -xvzC $(dir $@) -f-
+	chmod +x $@
 	code --version
 
 code-symlink:
