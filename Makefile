@@ -99,6 +99,10 @@ awscli: ${HOME}/.local/bin/aws
 .PHONY: shell
 shell: $(addprefix ${HOME}/,.bash_profile .zshrc .config/fish/config.fish .gitignore .gitconfig .ssh/id_ed25519)
 
+${HOME}/.local/bin/atuin: | ${HOME}/.local/bin
+	curl https://github.com/atuinsh/atuin/releases/latest/download/atuin-installer.sh -L \
+		| CARGO_DIST_FORCE_INSTALL_DIR=$| sh -s -- --no-modify-path
+
 ${HOME}/.bash_profile: bash_profile.sh
 	cp $< $@
 ${HOME}/.zshrc: zshrc

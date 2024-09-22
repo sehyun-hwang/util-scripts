@@ -21,6 +21,9 @@ if not string match -q -- $PNPM_HOME $PATH
 end
 # pnpm end
 
+atuin init fish | .
+export ATUIN_SYNC_ADDRESS=(docker ps -f name=atuin --format '{{.Ports}}' | sed -n 's=.*:\([0-9]*\)->.*=http://localhost:\1=p')
+
 if not test -S "(realpath /var/run/docker.sock)"
     export DOCKER_HOST=unix:///run/user/(id -u)/podman/podman.sock
 end
