@@ -23,15 +23,23 @@ if not string match -q -- $PNPM_HOME $PATH
 end
 # pnpm end
 
-atuin init fish | .
+starship init fish | source
+
 if test (uname) = Darwin
     export ATUIN_SYNC_ADDRESS=http://atuin.orb.local:8888
 else
-    export ATUIN_SYNC_ADDRESS=(docker ps -f name=atuin --format '{{.Ports}}' | sed -n 's=.*:\([0-9]*\)->.*=http://localhost:\1=p')
+    set DOCKER_PS_ATUIN_PORT (docker ps -f name=atuin --format '{{.Ports}}')
+    if test -z $DOCKER_PS_ATUIN_PORT
+        echo Atuin sync server is not running
+    else
+        export ATUIN_SYNC_ADDRESS=(echo $DOCKER_PS_ATUIN_PORT | sed -n 's=.*:\([0-9]*\)->.*=http://localhost:\1=p')
+    end
 end
+atuin init fish | .
 
-if not test -w (realpath /var/run/docker.sock)
-    export DOCKER_HOST=unix:///run/user/(id -u)/podman/podman.sock
+set PODMAN_SOCKET (docker info -f '{{.Host.RemoteSocket.Path}}')
+if test -n $PODMAN_SOCKET
+    export DOCKER_HOST=unix://$PODMAN_SOCKET
 end
 
 fish_add_path ~/.local/bin (yarn global bin)
