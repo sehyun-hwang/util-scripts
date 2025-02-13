@@ -81,25 +81,28 @@ awscli: ${HOME}/.local/bin/aws
 #######################
 
 .PHONY: shell
-shell: $(addprefix ${HOME}/,.bash_profile .zshrc .config/fish/conf.d/make.fish .gitignore .gitconfig .ssh/id_ed25519)
+shell: $(addprefix ${HOME}/,.local/bin/atuin .bash_profile .zshrc .config/fish/conf.d/make.fish .config/git/ignore .config/git/config .ssh/id_ed25519)
+
+$(addprefix ${HOME}/.local/bin,.config/fish/conf.d .config/git .ssh):
+	mkdir -p $@
 
 ${HOME}/.local/bin/atuin: | ${HOME}/.local/bin
 	curl https://github.com/atuinsh/atuin/releases/latest/download/atuin-installer.sh -L \
-		| CARGO_DIST_FORCE_INSTALL_DIR=$| sh -s -- --no-modify-path
+		| CARGO_DIST_FORCE_INSTALL_DIR=$| ATUIN_NO_MODIFY_PATH=1 sh -s --
 
 ${HOME}/.bash_profile: bash_profile.sh
 	cp $< $@
 ${HOME}/.zshrc: zshrc
 	cp $< $@
-${HOME}/.config/fish/conf.d/make.fish: config.fish
+${HOME}/.config/fish/conf.d/make.fish: config.fish | ${HOME}/.config/fish/conf.d
 	cp $< $@
 
-${HOME}/.gitignore: gitignore
+${HOME}/.config/git/ignore: gitignore | ${HOME}/.config/git
 	cp $< $@
-${HOME}/.gitconfig: gitconfig
-	envsubst < $< > $@
+${HOME}/.config/git/config: gitconfig | ${HOME}/.config/git
+	cp $< $@
 
-${HOME}/.ssh/id_ed25519: id_ed25519
+${HOME}/.ssh/id_ed25519: id_ed25519 | ${HOME}/.ssh
 	chmod 600 $<
 	ssh-keygen -pf $< -N ''
 	chmod 400 $<
