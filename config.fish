@@ -1,3 +1,12 @@
+export AWS_SDK_LOAD_CONFIG=1
+export PODMAN_IGNORE_CGROUPSV1_WARNING=1
+
+set YARN_EXECUTABLE yarn
+if test -x /tmp
+    set YARN_EXECUTABLE ~/.nix-profile/bin/yarn
+end
+fish_add_path ~/.local/bin ($YARN_EXECUTABLE global bin)
+
 set BREW_EXECUTABLE (ls /home/linuxbrew/.linuxbrew/bin/brew /opt/homebrew/bin/brew 2> /dev/null)
 
 if [ "$BREW_EXECUTABLE" ]
@@ -23,7 +32,7 @@ if not string match -q -- $PNPM_HOME $PATH
 end
 # pnpm end
 
-starship init fish | source
+command -q starship; and starship init fish | source
 
 if test (uname) = Darwin
     export ATUIN_SYNC_ADDRESS=http://atuin.orb.local:8888
@@ -35,12 +44,9 @@ else
         export ATUIN_SYNC_ADDRESS=(echo $DOCKER_PS_ATUIN_PORT | sed -n 's=.*:\([0-9]*\)->.*=http://localhost:\1=p')
     end
 end
-atuin init fish | .
+command -q atuin; and atuin init fish | .
 
 set PODMAN_SOCKET (docker info -f '{{.Host.RemoteSocket.Path}}')
 if test -n $PODMAN_SOCKET
     export DOCKER_HOST=unix://$PODMAN_SOCKET
 end
-
-fish_add_path ~/.local/bin (yarn global bin)
-export AWS_SDK_LOAD_CONFIG=1
