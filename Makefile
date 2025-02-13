@@ -16,23 +16,6 @@ endif
 $(info BLOB_DIR ${BLOB_DIR})
 
 ###########
-# Cloud 9 #
-###########
-
-.PHONY: cloud9
-cloud9: ${HOME}/.c9/python3/bin/pylint
-
-${HOME}/.c9:
-	curl https://d3kgj69l4ph6w4.cloudfront.net/static/c9-install-2.0.0.sh \
-	| sed -e 's=DOWNLOAD "$$PROD_CLOUDFRONT_URL/libevent-2.1.8-stable.tar.gz" libevent-2.1.8-stable.tar.gz=DOWNLOAD https://github.com/libevent/libevent/releases/download/release-2.1.10-stable/libevent-2.1.10-stable.tar.gz libevent-2.1.10-stable.tar.gz=' \
-	-e 's/libevent-2.1.8/libevent-2.1.10/' -e 's/-nc/-N/' \
-	| bash
-
-${HOME}/.c9/python3/bin/pylint: $(shell which pylint) | ${HOME}/.c9
-	mkdir -p $(dir $@)
-	ln -s $< $@
-
-###########
 # VS Code #
 ###########
 
@@ -191,29 +174,3 @@ backup/fish.json: ${HOME}/.local/share/fish/fish_history
 	cp $< $@
 backup/vscode.json: ~/.vscode-server/data/Machine/settings.json
 	cp $< $@
-
-##############
-# Containers #
-##############
-
-# systemctl --user enable --now podman.socket
-# sudo modprobe iptable-nat
-
-# /usr/share/containers/containers.conf
-# [engine]
-# compose_providers = ["/home/linuxbrew/.linuxbrew/bin/docker-compose"]
-# env = ["TMPDIR=/volatile/cache/tmp"]
-
-# sudo touch /etc/containers/nodocker
-# sudo semanage fcontext -a -e /var/lib/containers /volatile/containers
-# sudo restorecon -R /volatile/containers
-
-.PHONY: swap
-swap: ${BLOB_DIR}/swap
-
-${BLOB_DIR}/swap:
-	sudo dd if=/dev/zero of=$@ bs=128M count=32
-	sudo chmod 600 $@
-	sudo mkswap $@
-	sudo swapon $@
-	sudo swapon -s
