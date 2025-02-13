@@ -16,22 +16,6 @@ endif
 $(info BLOB_DIR ${BLOB_DIR})
 
 ###########
-# Cloud 9 #
-###########
-
-.PHONY: cloud9
-cloud9: ${HOME}/.c9/python3/bin/pylint
-
-${HOME}/.c9:
-	curl https://d3kgj69l4ph6w4.cloudfront.net/static/c9-install-2.0.0.sh \
-	| sed -e 's=DOWNLOAD "$$PROD_CLOUDFRONT_URL/libevent-2.1.8-stable.tar.gz" libevent-2.1.8-stable.tar.gz=DOWNLOAD https://github.com/libevent/libevent/releases/download/release-2.1.10-stable/libevent-2.1.10-stable.tar.gz libevent-2.1.10-stable.tar.gz=' \
-	-e 's/libevent-2.1.8/libevent-2.1.10/' -e 's/-nc/-N/' \
-	| bash
-
-${HOME}/.c9/python3/bin/pylint: | ${HOME}/.c9
-	ln -s $$(which pylint) $@
-
-###########
 # VS Code #
 ###########
 
@@ -126,28 +110,49 @@ ${HOME}/.ssh/id_ed25519: id_ed25519
 # Scripts #
 ###########
 
-SCRIPT_FILES := backup.sh ecr.sh lambda.sh ec2.py secret.fish
+SCRIPT_FILES := backup.sh ecr.sh lambda.sh resize.sh secret.fish ec2.py ssh-mac.py
 # https://www.gnu.org/software/make/manual/html_node/Text-Functions.html
 SCRIPT_FILES := $(SCRIPT_FILES:%=${HOME}/.local/bin/%)
-PYTHON_SITE_DIR := $(shell python -m site --user-site)
-EC2_SSH_REQUIREMENTS := $(addprefix ${PYTHON_SITE_DIR}/,paramiko boto3 simple_term_menu.py)
-$(info ${SCRIPT_FILES})
-.PHONY: scripts
-scripts: $(SCRIPT_FILES) ${HOME}/.local/bin/resize.sh ${PYTHON_SITE_DIR}/interactive_shell.py
+$(info SCRIPT_FILES ${SCRIPT_FILES})
 
+.PHONY: scripts
+scripts: $(SCRIPT_FILES)
+
+# Shell scripts
 ${HOME}/.local/bin/resize.sh:
 	wget -O $@ https://raw.githubusercontent.com/EugenMayer/parted-auto-resize/master/resize.sh
 	chmod +x $@
-
-~/.local/bin/%: %
+${HOME}/.local/bin/%.sh: %.sh
+	cp $< $@
+${HOME}/.local/bin/%.fish: %.fish
 	cp $< $@
 
-${EC2_SSH_REQUIREMENTS}:
-	pip install --user $(subst _,-,$(basename $(notdir ${EC2_SSH_REQUIREMENTS})))
-${PYTHON_SITE_DIR}:
-	mkdir -p $@
-${PYTHON_SITE_DIR}/%: % | ${PYTHON_SITE_DIR} ${EC2_SSH_REQUIREMENTS}
+# Python scripts
+PYTHON_VENV := ${BLOB_DIR}/venv/python$(shell python -c 'import sysconfig; print(sysconfig.get_python_version())')
+PYTHON_SITE_DIR := $(shell python -c 'import venv; print(venv.EnvBuilder()._venv_path("${PYTHON_VENV}", "purelib"))')
+EC2_SSH_REQUIREMENTS := $(addprefix ${PYTHON_SITE_DIR}/,boto3 paramiko paramiko_tunnel requests simple_term_menu.py)
+$(info PYTHON_VENV ${PYTHON_VENV})
+$(info PYTHON_SITE_DIR ${PYTHON_SITE_DIR})
+
+${PYTHON_VENV}:
+	python -m venv $@
+${PYTHON_SITE_DIR}: | ${PYTHON_VENV}
+${PYTHON_SITE_DIR}/requests_http_signature: | ${PYTHON_SITE_DIR}
+	# https://github.com/conor-f/remoteit-ssh/blob/main/requirements.txt
+	${PYTHON_VENV}/bin/pip install requests_http_signature==v0.1.0
+${EC2_SSH_REQUIREMENTS}: | ${PYTHON_SITE_DIR}/requests_http_signature
+	${PYTHON_VENV}/bin/pip install $(subst _,-,$(basename $(notdir ${EC2_SSH_REQUIREMENTS})))
+${PYTHON_SITE_DIR}/interactive_shell.py: interactive_shell.py | ${PYTHON_SITE_DIR}
 	cp $< $@
+${PYTHON_SITE_DIR}/remoteit_ssh_client.py: remoteit_ssh_client.sed | ${PYTHON_SITE_DIR}
+	curl https://raw.githubusercontent.com/conor-f/remoteit-ssh/main/src/remoteit_ssh/client.py \
+		| sed -f $< \
+		> $@
+
+${HOME}/.local/bin/%.py: %.py ${PYTHON_SITE_DIR}/interactive_shell.py ${PYTHON_SITE_DIR}/remoteit_ssh_client.py | ${EC2_SSH_REQUIREMENTS}
+	echo '#!${PYTHON_VENV}/bin/python' > $@
+	cat $< >> $@
+	chmod +x $@
 
 ##########
 # Backup #
@@ -169,29 +174,3 @@ backup/fish.json: ${HOME}/.local/share/fish/fish_history
 	cp $< $@
 backup/vscode.json: ~/.vscode-server/data/Machine/settings.json
 	cp $< $@
-
-##############
-# Containers #
-##############
-
-# systemctl --user enable --now podman.socket
-# sudo modprobe iptable-nat
-
-# /usr/share/containers/containers.conf
-# [engine]
-# compose_providers = ["/home/linuxbrew/.linuxbrew/bin/docker-compose"]
-# env = ["TMPDIR=/volatile/cache/tmp"]
-
-# sudo touch /etc/containers/nodocker
-# sudo semanage fcontext -a -e /var/lib/containers /volatile/containers
-# sudo restorecon -R /volatile/containers
-
-.PHONY: swap
-swap: ${BLOB_DIR}/swap
-
-${BLOB_DIR}/swap:
-	sudo dd if=/dev/zero of=$@ bs=128M count=32
-	sudo chmod 600 $@
-	sudo mkswap $@
-	sudo swapon $@
-	sudo swapon -s
