@@ -53,6 +53,7 @@ ${HOME}/.local/bin/code:
 	# https://code.visualstudio.com/sha/download?build=stable&os=cli-darwin-arm64
 	curl -fL 'https://code.visualstudio.com/sha/download?build=stable&os=cli-${VSCODE_OS}-${VSCODE_ARCH}' \
 	| tar -xvzC $(dir $@) -f-
+	chmod +x $@
 	code --version
 
 code-symlink:
@@ -97,13 +98,17 @@ awscli: ${HOME}/.local/bin/aws
 #######################
 
 .PHONY: shell
-shell: $(addprefix ${HOME}/,.bash_profile .zshrc .config/fish/config.fish .gitignore .gitconfig .ssh/id_ed25519)
+shell: $(addprefix ${HOME}/,.bash_profile .zshrc .config/fish/conf.d/make.fish .gitignore .gitconfig .ssh/id_ed25519)
+
+${HOME}/.local/bin/atuin: | ${HOME}/.local/bin
+	curl https://github.com/atuinsh/atuin/releases/latest/download/atuin-installer.sh -L \
+		| CARGO_DIST_FORCE_INSTALL_DIR=$| sh -s -- --no-modify-path
 
 ${HOME}/.bash_profile: bash_profile.sh
 	cp $< $@
 ${HOME}/.zshrc: zshrc
 	cp $< $@
-${HOME}/.config/fish/config.fish: config.fish
+${HOME}/.config/fish/conf.d/make.fish: config.fish
 	cp $< $@
 
 ${HOME}/.gitignore: gitignore
