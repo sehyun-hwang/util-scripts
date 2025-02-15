@@ -15,6 +15,9 @@ BLOB_DIR := ${HOME}/volatile
 endif
 $(info BLOB_DIR ${BLOB_DIR})
 
+$(addprefix ${HOME}/,.local/bin .ssh):
+	mkdir -p $@
+
 ###########
 # VS Code #
 ###########
@@ -39,12 +42,8 @@ ${HOME}/.local/bin/code:
 	chmod +x $@
 	code --version
 
-code-symlink:
-	mkdir -p ${BLOB_DIR}/vscode-server
-	ln -s ${BLOB_DIR}/vscode-server ~/.vscode-server
-
 .PHONY: code-tunnel
-code-tunnel: ${HOME}/.local/bin/code | ${BLOB_DIR}/swap
+code-tunnel: ${HOME}/.local/bin/code
 	systemd-run -p MemoryMax=2.5G -p MemorySwapMax=2G --user --scope code tunnel
 
 ###########
@@ -81,7 +80,7 @@ awscli: ${HOME}/.local/bin/aws
 #######################
 
 .PHONY: shell
-shell: $(addprefix ${HOME}/,.bash_profile .zshrc .config/fish/conf.d/make.fish .gitignore .gitconfig .ssh/id_ed25519)
+shell: $(addprefix ${HOME}/,.local/bin/atuin .bash_profile .zshrc .config/fish/conf.d/make.fish .config/git/ignore .config/git/config .config/code-server/config.yaml .ssh/id_ed25519)
 
 ${HOME}/.local/bin/atuin: | ${HOME}/.local/bin
 	curl https://github.com/atuinsh/atuin/releases/latest/download/atuin-installer.sh -L \
@@ -92,12 +91,16 @@ ${HOME}/.bash_profile: bash_profile.sh
 ${HOME}/.zshrc: zshrc
 	cp $< $@
 ${HOME}/.config/fish/conf.d/make.fish: config.fish
-	cp $< $@
+	install -DT $< $@
 
-${HOME}/.gitignore: gitignore
-	cp $< $@
-${HOME}/.gitconfig: gitconfig
-	envsubst < $< > $@
+${HOME}/.config/git/ignore: gitignore
+	install -DT $< $@
+${HOME}/.config/git/config: gitconfig
+	GH=$(shell which gh) envsubst < $< > $@
+${HOME}/.config/atuin/config.toml: atuin.toml
+	install -DT $< $@
+${HOME}/.config/code-server/config.yaml: code-server.yaml
+	install -DT $< $@
 
 ${HOME}/.ssh/id_ed25519: id_ed25519
 	chmod 600 $<
