@@ -99,6 +99,8 @@ ${HOME}/.config/git/config: gitconfig
 	GH=$(shell which gh) envsubst < $< > $@
 ${HOME}/.config/atuin/config.toml: atuin.toml
 	install -DT $< $@
+${HOME}/.config/starship.toml: starship.toml
+	install -DT $< $@
 ${HOME}/.config/code-server/config.yaml: code-server.yaml
 	install -DT $< $@
 

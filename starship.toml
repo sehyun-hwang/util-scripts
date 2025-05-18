@@ -1,0 +1,11 @@
+[memory_usage]
+disabled = false
+
+[os]
+disabled = false
+
+[status]
+disabled = false
+
+[time]
+disabled = false
