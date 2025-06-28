@@ -80,11 +80,7 @@ awscli: ${HOME}/.local/bin/aws
 #######################
 
 .PHONY: shell
-shell: $(addprefix ${HOME}/,.local/bin/atuin .bash_profile .zshrc .config/fish/conf.d/make.fish .config/git/ignore .config/git/config .config/code-server/config.yaml .ssh/id_ed25519)
-
-${HOME}/.local/bin/atuin: | ${HOME}/.local/bin
-	curl https://github.com/atuinsh/atuin/releases/latest/download/atuin-installer.sh -L \
-		| CARGO_DIST_FORCE_INSTALL_DIR=$| sh -s -- --no-modify-path
+shell: $(addprefix ${HOME}/,.bash_profile .zshrc .config/fish/conf.d/make.fish .config/git/ignore .config/git/config .config/code-server/config.yaml .ssh/id_ed25519)
 
 ${HOME}/.bash_profile: bash_profile.sh
 	cp $< $@
@@ -96,12 +92,10 @@ ${HOME}/.config/fish/conf.d/make.fish: config.fish
 ${HOME}/.config/git/ignore: gitignore
 	install -DT $< $@
 ${HOME}/.config/git/config: gitconfig
-	GH=$(shell which gh) envsubst < $< > $@
+	printf "$$(cat $<)" $(shell which gh) $(shell which gh) > $@
 ${HOME}/.config/atuin/config.toml: atuin.toml
 	install -DT $< $@
 ${HOME}/.config/starship.toml: starship.toml
-	install -DT $< $@
-${HOME}/.config/code-server/config.yaml: code-server.yaml
 	install -DT $< $@
 
 ${HOME}/.ssh/id_ed25519: id_ed25519
