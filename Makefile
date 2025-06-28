@@ -96,7 +96,10 @@ ${HOME}/.config/git/config: gitconfig
 ${HOME}/.config/atuin/config.toml: atuin.toml
 	install -DT $< $@
 ${HOME}/.config/starship.toml: starship.toml
-	install -DT $< $@
+	PRESET_DIR=$$(mktemp -d) \
+	&& starship preset no-nerd-font -o $$PRESET_DIR/no-nerd-font.toml \
+	&& starship preset no-runtime-versions -o $$PRESET_DIR/no-runtime-versions.toml \
+	&& pipx run toml-union $$PRESET_DIR $< -o $@
 
 ${HOME}/.ssh/id_ed25519: id_ed25519
 	chmod 600 $<
@@ -158,18 +161,25 @@ ${HOME}/.local/bin/%.py: %.py ${PYTHON_SITE_DIR}/interactive_shell.py ${PYTHON_S
 ##########
 
 $(shell	mkdir -p backup)
-
 .PHONY: backup
-backup: backup/ssh-config.txt backup/fish.json backup/vscode.json
-	which dnf && dnf history > backup/dnf.txt
-	which apt && apt-mark showmanual > backup/apt.txt
-	which brew && brew leaves > backup/brew.txt
-	which pnpm && pnpm ls -g > backup/pnpm.txt
-	which yarn && yarn global list > backup/yarn.txt
+backup: backup/ssh-config.txt backup/vscode.jsonc
+ifneq (, $(shell which dnf))
+	dnf history > backup/dnf.txt
+endif
+ifneq (, $(shell which apt))
+	apt-mark showmanual > backup/apt.txt
+endif
+ifneq (, $(shell which brew))
+	brew leaves > backup/brew.txt
+endif
+ifneq (, $(shell which pnpm))
+	pnpm ls -g > backup/pnpm.txt
+endif
+ifneq (, $(shell which yarn))
+	yarn global list > backup/yarn.txt
+endif
 
 backup/ssh-config.txt: ${HOME}/.ssh/config
 	cp $< $@
-backup/fish.json: ${HOME}/.local/share/fish/fish_history
-	cp $< $@
-backup/vscode.json: ~/.vscode-server/data/Machine/settings.json
+backup/vscode.jsonc: ~/.vscode-server/data/Machine/settings.json
 	cp $< $@
