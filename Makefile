@@ -101,7 +101,7 @@ ${HOME}/.config/starship.toml: starship.toml
 	&& starship preset no-runtime-versions -o $$PRESET_DIR/no-runtime-versions.toml \
 	&& pipx run toml-union $$PRESET_DIR $< -o $@
 
-${HOME}/.ssh/id_ed25519: id_ed25519
+${HOME}/.ssh/id_ed25519: id_ed25519 | ${HOME}/.ssh
 	chmod 600 $<
 	ssh-keygen -pf $< -N ''
 	chmod 400 $<

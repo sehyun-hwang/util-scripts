@@ -32,5 +32,8 @@ disabled = true
 [python]
 format = 'via [${symbol}${pyenv_prefix}(${version} )(\($virtualenv\) )]($style)'
 
+[kubernetes]
+disabled = false
+
 [aws]
 format = 'on [$symbol($profile )(\($region\) )]($style)'
