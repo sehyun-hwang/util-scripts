@@ -34,5 +34,3 @@ esac
 export PATH=$(yarn global bin):$PATH
 export AWS_SDK_LOAD_CONFIG=1
 export DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock
-
-[ -z "$C9_HOSTNAME" ] || exec fish

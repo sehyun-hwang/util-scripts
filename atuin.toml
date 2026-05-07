@@ -1,0 +1,9 @@
+filter_mode_shell_up_key_binding = "session"
+search_mode = "daemon-fuzzy"
+inline_height = 10
+
+[daemon]
+enabled = true
+
+[ai]
+enabled = true

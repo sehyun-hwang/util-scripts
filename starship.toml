@@ -1,0 +1,39 @@
+"$schema" = "https://starship.rs/config-schema.json"
+format = '''$os$directory$git_branch$git_status
+$status$cmd_duration$time$character'''
+right_format = "$all"
+
+[hostname]
+ssh_only = false
+
+[memory_usage]
+disabled = false
+format = "via $symbol [r${ram_pct}( | s${swap_pct})]($style) "
+
+[os]
+disabled = false
+
+[status]
+disabled = false
+success_symbol = '🟢'
+format = '[$symbol$common_meaning$signal_name$maybe_int]($style) '
+pipestatus = true
+
+[time]
+disabled = false
+
+[cmd_duration]
+min_time = 0
+show_notifications = true
+
+[package]
+disabled = true
+
+[kubernetes]
+disabled = false
+
+[kubernetes]
+disabled = false
+
+[aws]
+format = 'on [$symbol($profile )(\($region\) )]($style)'

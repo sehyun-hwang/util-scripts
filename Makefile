@@ -15,6 +15,9 @@ BLOB_DIR := ${HOME}/volatile
 endif
 $(info BLOB_DIR ${BLOB_DIR})
 
+$(addprefix ${HOME}/,.local/bin .ssh):
+	mkdir -p $@
+
 ###########
 # VS Code #
 ###########
@@ -39,12 +42,8 @@ ${HOME}/.local/bin/code:
 	chmod +x $@
 	code --version
 
-code-symlink:
-	mkdir -p ${BLOB_DIR}/vscode-server
-	ln -s ${BLOB_DIR}/vscode-server ~/.vscode-server
-
 .PHONY: code-tunnel
-code-tunnel: ${HOME}/.local/bin/code | ${BLOB_DIR}/swap
+code-tunnel: ${HOME}/.local/bin/code
 	systemd-run -p MemoryMax=2.5G -p MemorySwapMax=2G --user --scope code tunnel
 
 ###########
@@ -81,25 +80,26 @@ awscli: ${HOME}/.local/bin/aws
 #######################
 
 .PHONY: shell
-shell: $(addprefix ${HOME}/,.bash_profile .zshrc .config/fish/conf.d/make.fish .gitignore .gitconfig .ssh/id_ed25519)
-
-${HOME}/.local/bin/atuin: | ${HOME}/.local/bin
-	curl https://github.com/atuinsh/atuin/releases/latest/download/atuin-installer.sh -L \
-		| CARGO_DIST_FORCE_INSTALL_DIR=$| sh -s -- --no-modify-path
+shell: $(addprefix ${HOME}/,.bash_profile .config/fish/conf.d/make.fish .config/git/ignore .config/git/config .config/code-server/config.yaml .ssh/id_ed25519)
 
 ${HOME}/.bash_profile: bash_profile.sh
 	cp $< $@
-${HOME}/.zshrc: zshrc
-	cp $< $@
 ${HOME}/.config/fish/conf.d/make.fish: config.fish
-	cp $< $@
+	install -DT $< $@
 
-${HOME}/.gitignore: gitignore
-	cp $< $@
-${HOME}/.gitconfig: gitconfig
-	envsubst < $< > $@
+${HOME}/.config/git/ignore: gitignore
+	install -DT $< $@
+${HOME}/.config/git/config: gitconfig
+	printf "$$(cat $<)" $(shell which gh) $(shell which gh) > $@
+${HOME}/.config/atuin/config.toml: atuin.toml
+	install -DT $< $@
+${HOME}/.config/starship.toml: starship.toml
+	PRESET_DIR=$$(mktemp -d) \
+	&& starship preset no-nerd-font -o $$PRESET_DIR/no-nerd-font.toml \
+	&& starship preset no-runtime-versions -o $$PRESET_DIR/no-runtime-versions.toml \
+	&& uvx toml-union $$PRESET_DIR $< -e python.format -o $@
 
-${HOME}/.ssh/id_ed25519: id_ed25519
+${HOME}/.ssh/id_ed25519: id_ed25519 | ${HOME}/.ssh
 	chmod 600 $<
 	ssh-keygen -pf $< -N ''
 	chmod 400 $<
@@ -159,18 +159,25 @@ ${HOME}/.local/bin/%.py: %.py ${PYTHON_SITE_DIR}/interactive_shell.py ${PYTHON_S
 ##########
 
 $(shell	mkdir -p backup)
-
 .PHONY: backup
-backup: backup/ssh-config.txt backup/fish.json backup/vscode.json
-	which dnf && dnf history > backup/dnf.txt
-	which apt && apt-mark showmanual > backup/apt.txt
-	which brew && brew leaves > backup/brew.txt
-	which pnpm && pnpm ls -g > backup/pnpm.txt
-	which yarn && yarn global list > backup/yarn.txt
+backup: backup/ssh-config.txt backup/vscode.jsonc
+ifneq (, $(shell which dnf))
+	dnf history > backup/dnf.txt
+endif
+ifneq (, $(shell which apt))
+	apt-mark showmanual > backup/apt.txt
+endif
+ifneq (, $(shell which brew))
+	brew leaves > backup/brew.txt
+endif
+ifneq (, $(shell which pnpm))
+	pnpm ls -g > backup/pnpm.txt
+endif
+ifneq (, $(shell which yarn))
+	yarn global list > backup/yarn.txt
+endif
 
 backup/ssh-config.txt: ${HOME}/.ssh/config
 	cp $< $@
-backup/fish.json: ${HOME}/.local/share/fish/fish_history
-	cp $< $@
-backup/vscode.json: ~/.vscode-server/data/Machine/settings.json
+backup/vscode.jsonc: ~/.vscode-server/data/Machine/settings.json
 	cp $< $@
