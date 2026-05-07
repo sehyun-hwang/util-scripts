@@ -4,7 +4,6 @@ inline_height = 10
 
 [daemon]
 enabled = true
-autostart = true
 
 [ai]
 enabled = true

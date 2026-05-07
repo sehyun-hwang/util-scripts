@@ -80,11 +80,9 @@ awscli: ${HOME}/.local/bin/aws
 #######################
 
 .PHONY: shell
-shell: $(addprefix ${HOME}/,.bash_profile .zshrc .config/fish/conf.d/make.fish .config/git/ignore .config/git/config .config/code-server/config.yaml .ssh/id_ed25519)
+shell: $(addprefix ${HOME}/,.bash_profile .config/fish/conf.d/make.fish .config/git/ignore .config/git/config .config/code-server/config.yaml .ssh/id_ed25519)
 
 ${HOME}/.bash_profile: bash_profile.sh
-	cp $< $@
-${HOME}/.zshrc: zshrc
 	cp $< $@
 ${HOME}/.config/fish/conf.d/make.fish: config.fish
 	install -DT $< $@
@@ -99,7 +97,7 @@ ${HOME}/.config/starship.toml: starship.toml
 	PRESET_DIR=$$(mktemp -d) \
 	&& starship preset no-nerd-font -o $$PRESET_DIR/no-nerd-font.toml \
 	&& starship preset no-runtime-versions -o $$PRESET_DIR/no-runtime-versions.toml \
-	&& pipx run toml-union $$PRESET_DIR $< -o $@
+	&& uvx toml-union $$PRESET_DIR $< -e python.format -o $@
 
 ${HOME}/.ssh/id_ed25519: id_ed25519 | ${HOME}/.ssh
 	chmod 600 $<

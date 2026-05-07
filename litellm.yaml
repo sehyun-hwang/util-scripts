@@ -1,0 +1,4 @@
+model_list:
+  - model_name: github_copilot/gpt-5.4-mini
+    litellm_params:
+      model: github_copilot/gpt-5.4-mini
