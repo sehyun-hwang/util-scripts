@@ -1,0 +1,9 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "byok-subagent-policy",
+  "version": "1.0.0",
+  "description": "Enforces the machine-wide BYOK model for subagent task tools.",
+  "extensions": {
+    "com.github.copilot": {}
+  }
+}

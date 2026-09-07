@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "hooks": {
+    "PreToolUse": [
+      {
+        "type": "command",
+        "bash": "/bin/bash \"$HOME/.copilot/hooks/byok-subagent-policy.sh\"",
+        "timeoutSec": 5
+      }
+    ]
+  }
+}

@@ -46,6 +46,25 @@ ${HOME}/.local/bin/code:
 code-tunnel: ${HOME}/.local/bin/code
 	systemd-run -p MemoryMax=2.5G -p MemorySwapMax=2G --user --scope code tunnel
 
+BYOK_PLUGIN := local-plugins/byok-subagent-policy
+BYOK_CONFIGS := instructions/byok-subagents.instructions.md hooks/byok-subagent-policy.json \
+	${BYOK_PLUGIN}/plugin.json ${BYOK_PLUGIN}/com.github.copilot/hooks/hooks.json
+
+.PHONY: byok-install byok-test
+byok-install:
+	@set -e; for file in ${BYOK_CONFIGS}; do \
+		mkdir -p "${HOME}/.copilot/$$(dirname "$$file")"; \
+		cp "byok/$$file" "${HOME}/.copilot/$$file"; \
+		chmod 600 "${HOME}/.copilot/$$file"; \
+	done
+	mkdir -p "${HOME}/.copilot/${BYOK_PLUGIN}/scripts"
+	install -m 700 "byok/${BYOK_PLUGIN}/scripts/byok-subagent-policy.sh" "${HOME}/.copilot/${BYOK_PLUGIN}/scripts/byok-subagent-policy.sh"
+	install -m 700 "byok/${BYOK_PLUGIN}/scripts/byok-subagent-policy.sh" "${HOME}/.copilot/hooks/byok-subagent-policy.sh"
+
+byok-test:
+	bash -n "byok/${BYOK_PLUGIN}/scripts/byok-subagent-policy.sh"
+	bash byok/test-policy.sh
+
 ###########
 # AWS CLI #
 ###########
