@@ -14,9 +14,8 @@ import time
 import unittest
 import urllib.parse
 
-NIX_DIR = pathlib.Path(__file__).resolve().parents[2]
-REPO = NIX_DIR.parent
-RESILIO = NIX_DIR / "resilio"
+REPO = pathlib.Path(__file__).resolve().parents[2]
+RESILIO = REPO / "resilio"
 WRAPPER = RESILIO / "resilio-restish"
 HELPER = RESILIO / "resilio-restish-auth.py"
 SCHEMA = RESILIO / "openapi.yaml"
@@ -130,10 +129,11 @@ class RestishWrapperTests(unittest.TestCase):
             encoding="utf-8",
         )
         self.restish_config = self.work / "restish.json"
-        static_config = CONFIG_TEMPLATE.read_text(encoding="utf-8")
-        static_config = static_config.replace("@RESILIO_OPENAPI@", str(SCHEMA))
-        static_config = static_config.replace("@RESILIO_AUTH_HELPER@", str(HELPER))
-        self.restish_config.write_text(static_config, encoding="utf-8")
+        static_config = json.loads(CONFIG_TEMPLATE.read_text(encoding="utf-8"))
+        api = static_config["apis"]["resilio"]
+        api["spec_files"] = [str(SCHEMA)]
+        api["profiles"]["default"]["auth"]["params"]["commandline"] = str(HELPER)
+        self.restish_config.write_text(json.dumps(static_config), encoding="utf-8")
         self.restish_config.chmod(0o600)
         helper_hash = "sha256:" + hashlib.sha256(str(HELPER).encode()).hexdigest()
         self.approval_path = self.work / "external-tool-approvals.json"
@@ -166,10 +166,12 @@ class RestishWrapperTests(unittest.TestCase):
     def arguments(self, *arguments: str) -> list[str]:
         return [str(WRAPPER), "resilio", "web-ui-action", *arguments]
 
-    def run_wrapper(self, *arguments: str, approve: bool = True) -> subprocess.CompletedProcess[str]:
+    def run_wrapper(
+        self, *arguments: str, approve: bool = True, cwd: pathlib.Path = REPO
+    ) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             self.arguments(*arguments),
-            cwd=REPO,
+            cwd=cwd,
             env=self.environment(),
             input="y\n" if approve else "n\n",
             capture_output=True,
@@ -177,6 +179,61 @@ class RestishWrapperTests(unittest.TestCase):
             timeout=20,
             check=False,
         )
+
+    def test_wrapper_uses_xdg_config_by_default(self) -> None:
+        fake_restish = self.work / "restish-print-config"
+        fake_restish.write_text(
+            '#!/bin/sh\nprintf \'{"config":"%s"}\\n\' "$RSH_CONFIG"\n',
+            encoding="utf-8",
+        )
+        fake_restish.chmod(0o700)
+        checker = self.work / "response-checker"
+        checker.write_text("#!/bin/sh\n/bin/cat\n", encoding="utf-8")
+        checker.chmod(0o700)
+        xdg = self.work / "xdg"
+        config = xdg / "restish/restish.json"
+        config.parent.mkdir(parents=True)
+        config.write_text("{}\n", encoding="utf-8")
+        installed_bin = self.work / "bin"
+        installed_bin.mkdir()
+        installed_wrapper = installed_bin / "resilio-restish"
+        shutil.copy2(WRAPPER, installed_wrapper)
+        env = self.environment()
+        env.update({
+            "RESTISH_BIN": str(fake_restish),
+            "XDG_CONFIG_HOME": str(xdg),
+            "RESILIO_RESTISH_RESPONSE_CHECKER": str(checker),
+        })
+        env.pop("RESILIO_RESTISH_CONFIG")
+        result = subprocess.run(
+            [str(installed_wrapper), "get", "resilio/gui/"], env=env,
+            capture_output=True, text=True, timeout=20, check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), {"config": str(config)})
+
+    def test_wrapper_resolves_raw_checkout_config_outside_repo_cwd(self) -> None:
+        fake_restish = self.work / "restish-check-cwd"
+        fake_restish.write_text(
+            "#!/bin/sh\ntest -f resilio/openapi.yaml || exit 9\nprintf '{\"status\":200}\\n'\n",
+            encoding="utf-8",
+        )
+        fake_restish.chmod(0o700)
+        env = self.environment()
+        env["RESTISH_BIN"] = str(fake_restish)
+        env.pop("RESILIO_RESTISH_CONFIG")
+        env.pop("RESILIO_RESTISH_AUTH_HELPER")
+        result = subprocess.run(
+            self.arguments("getsyncfolders"),
+            cwd=self.work,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), {"status": 200})
 
     def run_lifecycle(self, *args):
         return subprocess.run([str(WRAPPER.resolve()), *args], env=self.environment(),

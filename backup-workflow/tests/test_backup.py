@@ -6,12 +6,11 @@ import subprocess
 import tempfile
 import unittest
 
-NIX_DIR = Path(__file__).resolve().parents[2]
-REPO = NIX_DIR.parent
-SCRIPTS = NIX_DIR / 'assets' / 'scripts'
-INVENTORY_MAKEFILE = NIX_DIR / 'assets' / 'backup.mk'
-WIP = SCRIPTS / 'backup-git-wip.sh'
-WORKFLOW = SCRIPTS / 'backup-workflow.sh'
+REPO = Path(__file__).resolve().parents[2]
+BACKUP_WORKFLOW = REPO / 'backup-workflow'
+INVENTORY_MAKEFILE = BACKUP_WORKFLOW / 'backup.mk'
+WIP = BACKUP_WORKFLOW / 'backup-git-wip.sh'
+WORKFLOW = BACKUP_WORKFLOW / 'backup-workflow.sh'
 
 
 class BackupTests(unittest.TestCase):
@@ -118,7 +117,7 @@ class BackupTests(unittest.TestCase):
 
     def test_inventory_destination_rejected(self):
         checkout = self.base / 'unsafe-checkout'
-        makefile = checkout / 'nix/assets/backup.mk'
+        makefile = checkout / 'backup-workflow/backup.mk'
         makefile.parent.mkdir(parents=True)
         makefile.write_text('backup:\n\tfalse\n')
         result = subprocess.run(['bash', str(WORKFLOW), '--repo', str(checkout),
@@ -130,7 +129,7 @@ class BackupTests(unittest.TestCase):
 
     def test_inventory_failure_stops_snapshot(self):
         checkout = self.base / 'broken-checkout'
-        makefile = checkout / 'nix/assets/backup.mk'
+        makefile = checkout / 'backup-workflow/backup.mk'
         makefile.parent.mkdir(parents=True)
         makefile.write_text('backup:\n\tfalse\n')
         result = subprocess.run(['bash', str(WORKFLOW), '--repo', str(checkout),
@@ -141,7 +140,7 @@ class BackupTests(unittest.TestCase):
 
     def test_inventory_then_wip(self):
         checkout = self.base / 'checkout'
-        makefile = checkout / 'nix/assets/backup.mk'
+        makefile = checkout / 'backup-workflow/backup.mk'
         makefile.parent.mkdir(parents=True)
         makefile.write_text('backup:\n\tmkdir -p backup\n\tprintf inventory > backup/inventory.txt\n')
         (self.repo / 'tracked').write_text('changed')

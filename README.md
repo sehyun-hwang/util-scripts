@@ -1,9 +1,9 @@
 # util-scripts
 
-> Personal development environment managed with [Nix and Hjem](nix/README.md).
+> Personal development environment managed with Nix and Hjem.
 
 The legacy Makefile and its duplicate installers have been removed. Inventory
-capture remains available through the canonical [nix/assets/backup.mk](nix/assets/backup.mk).
+capture remains available through the canonical [backup-workflow/backup.mk](backup-workflow/backup.mk).
 
 ## Usage
 
@@ -27,7 +27,7 @@ capture remains available through the canonical [nix/assets/backup.mk](nix/asset
 
 ### VS Code CLI installation
 
-`nix build path:./nix#vscode-cli` builds pinned VS Code 1.137.0 with matching
+`nix build 'git+file:'"$PWD"'#vscode-cli'` builds pinned VS Code 1.137.0 with matching
 product metadata and source/Cargo hashes. Hjem installs it to `~/.local/bin/code`.
 
 To update it, update the isolated `vscode-nixpkgs` input, confirm
@@ -35,10 +35,10 @@ To update it, update the isolated `vscode-nixpkgs` input, confirm
 `vscodeSource.hash` and `cargoHash`. The build verifies source/product version
 and commit agreement plus the resulting `code --version`.
 
-### Copilot BYOK subagent policy (macOS)
+### Copilot subagent model policy (macOS)
 
 Activate the Hjem configuration described below to install the policy files
-from [nix/byok](nix/byok). Hjem backs up conflicting unmanaged files; it does not
+from [copilot](copilot). Hjem backs up conflicting unmanaged files; it does not
 change VS Code settings automatically. Runtime requires Bash,
 `jq`, a VS Code build supporting Agent Plugins, and `chatgpt/gpt-5.6-sol`
 registered in each channel you use. The hook finds `jq` on PATH or in standard
@@ -75,7 +75,7 @@ existing standalone `.disabled` marker manually if that hook should be active.
 Run the existing policy self-tests with:
 
 ```bash
-bash nix/byok/test-policy.sh
+bash copilot/test-policy.sh
 ```
 
 Reload Stable and Insiders after installation, verify discovery in
@@ -88,22 +88,22 @@ plugin as a tamper-proof machine security boundary.
 ## Local backup workflow
 
 The old ZIP/S3/SSH `backup.sh` has been removed. The canonical
-[nix/assets/scripts/backup-git-wip.sh](nix/assets/scripts/backup-git-wip.sh)
-remains unchanged; [backup-workflow.sh](nix/assets/scripts/backup-workflow.sh)
+[backup-workflow/backup-git-wip.sh](backup-workflow/backup-git-wip.sh)
+remains unchanged; [backup-workflow.sh](backup-workflow/backup-workflow.sh)
 orchestrates inventory capture and Git WIP snapshots without uploading anything.
 
 ```bash
-make -f nix/assets/backup.mk backup
-bash nix/assets/scripts/backup-workflow.sh --repo "$PWD" --destination "$HOME/Backups/git-wip" --home "$HOME"
+make -f backup-workflow/backup.mk backup
+bash backup-workflow/backup-workflow.sh --repo "$PWD" --destination "$HOME/Backups/git-wip" --home "$HOME"
 ```
 
 Use the Nix-packaged commands below, or put Bash 4+ and GNU coreutils/findutils
 on PATH (macOS `/bin/bash` and `realpath` are not sufficient). Runtime also needs
 Git, rsync, GNU-compatible make, and Python 3.
 
-`make -f nix/assets/backup.mk backup` records available package-manager inventories
+`make -f backup-workflow/backup.mk backup` records available package-manager inventories
 and SSH/VS Code configuration into [backup/](backup/). The workflow invokes the
-canonical [nix/assets/backup.mk](nix/assets/backup.mk) directly; no root Makefile
+canonical [backup-workflow/backup.mk](backup-workflow/backup.mk) directly; no root Makefile
 or compatibility link is required.
 Missing optional tools/configuration are skipped; failures from available tools
 stop the workflow. Existing inventory files are retained, including those from
@@ -125,63 +125,75 @@ Symlinks are copied as symlinks. Resilio synchronization is not immutable backup
 retention and can propagate deletion or corruption. Review inventories and
 untracked files for private information before sharing a destination.
 
-## Standalone Nix profile
+## Install with Hjem
 
-The [flake](nix/flake.nix) packages the tools and configuration assets,
-the backup commands, and both SwiftBar plugins. Hjem standalone handles
-optional declarative file activation; the package profile remains separate.
+The [root flake](flake.nix) packages the tools and configuration assets,
+the backup commands, and all five SwiftBar plugin files. Hjem standalone handles
+declarative file activation and command installation; no separate package profile is needed.
 This does not modify existing Home Manager, nix-darwin, NixOS configuration, or
 Python virtual environments. Do not assign the same destination files to both
 Hjem and another configuration manager.
-Use a **separate profile**:
+Keep a durable GC root for the Hjem configuration and its runtime dependencies:
 
 ```bash
-PROFILE="$HOME/.local/state/nix/profiles/util-scripts"
-mkdir -p "$(dirname "$PROFILE")"
-nix profile install --profile "$PROFILE" "path:$PWD/nix#default" "path:$PWD/nix#hjem-config"
-# Do not prepend this profile to PATH. Hjem installs selected commands in ~/.local/bin.
-"$PROFILE/bin/backup-workflow.sh" --repo "$PWD" --destination "$HOME/Backups/git-wip" --dry-run
-"$PROFILE/bin/resilio-restish" --help
+FLAKE="git+file:$PWD"
+GCROOT="${XDG_STATE_HOME:-$HOME/.local/state}/nix/gcroots/util-scripts-hjem-config"
+
+mkdir -p "$(dirname "$GCROOT")"
+nix build --out-link "$GCROOT" "$FLAKE#hjem-config"
+nix run "$FLAKE#hjem" -- standalone switch --config "$GCROOT"
+
+# Hjem installs selected commands in ~/.local/bin.
+"$HOME/.local/bin/backup-workflow.sh" --repo "$PWD" --destination "$HOME/Backups/git-wip" --dry-run
+"$HOME/.local/bin/resilio-restish" --help
+"$HOME/.local/bin/restish" --version
+"$HOME/.local/bin/thv-patched" version
 ```
 
-Always use the explicit `path:.../nix` flake reference, **not the repository root
-or a Git flake reference**. Nix imports its source before evaluation, so a
-root-level filter cannot protect private files in the repository. The dedicated [nix](nix) directory is the only packaged source. Components have
-one canonical tree each under `nix/byok`, `nix/resilio`, and `nix/swiftbar`;
-shared backup and shell assets remain under `nix/assets`. There are no root
-compatibility paths or copied mirrors. Never place credentials, application
-state, SSH private keys, or backup inventories under `nix/`. Verify the safe-root
-boundary, canonical layout, and preserved backup-script hash with:
-
-```bash
-python3 nix/verify-source.py
-```
+The `git+file:$PWD` source includes only files tracked by Git and therefore excludes
+untracked cache and machine-specific inventories. It also includes the repository's
+tracked `backup/` inventories; review their path/content policy before publishing or
+sharing the flake source. Newly added implementation files must be staged or
+committed before Nix can see them; changes to already tracked files are visible.
+Do not use `path:.`, which copies the whole working tree to the Nix store. Components have one canonical root tree; there
+are no compatibility mirrors.
 
 Available individual outputs include `#backup-workflow`, `#backup-git-wip`,
-`#remoteit-ssh`, `#resilio`, `#restish`, `#awscli2`, and `#vscode-cli`.
+`#remoteit-ssh`, `#resilio`, `#restish`, `#thv-patched`, `#awscli2`, and
+`#vscode-cli`. Restish 2.3.0 is built from tagged source commit
+`6305246a75121a7373563577e50e9bf522baca6b`, not a release binary. ToolHive
+0.46.0 is built from commit `c6c425a924fac51c86cbade15d0e720e29a600ab`
+with [the explicit-OAuth patch](patches/toolhive-explicit-oauth.patch). The
+`thv-patched` wrapper defaults `TOOLHIVE_SKIP_DESKTOP_CHECK=1`; an explicitly
+set environment value overrides the default, and the existing `thv` command is
+left untouched.
+
 Resilio itself remains an external application. The stale ECR, Lambda, and
-secret helper sources have been removed. Hjem installs `code`, `remoteit-ssh`, `restish`,
-`resilio-restish`, and both backup commands into `~/.local/bin`; use `code tunnel`.
+secret helper sources have been removed. Hjem installs `code`, `remoteit-ssh`,
+`restish`, `thv-patched`, `resilio-restish`, and both backup commands into
+`~/.local/bin`; use `code tunnel`.
 The updated Nix CLI is pinned to 1.137.0. Existing PATH precedence is unchanged;
 use `~/.local/bin/code` to select this binary explicitly.
 
 ### Hjem file activation
 
 Pinned upstream [Hjem](https://github.com/feel-co/hjem) replaces the custom asset
-installer. Installing the command profile does not activate configuration files.
-Build and validate the configuration first:
+installer. Building packages does not activate configuration files.
+Build and validate the configuration first. This does not activate files:
 
 ```bash
-HJEM="$(nix build --no-link --print-out-paths 'path:./nix#hjem')/bin/hjem"
-CONFIG="$(nix build --no-link --print-out-paths 'path:./nix#hjem-config')"
-"$HJEM" standalone build --config "$CONFIG"
+FLAKE="git+file:$PWD"
+CONFIG=$(nix build --no-link --print-out-paths "$FLAKE#hjem-config")
+nix build "$FLAKE#hjem-manifest"
+nix run "$FLAKE#hjem" -- standalone build --config "$CONFIG"
 ```
 
 The default configuration targets **hwangsehyun**, with `/Users/hwangsehyun` on
 Darwin and `/home/hwangsehyun` on Linux; it does not infer a different home from
-the caller. Review the manifest and destination paths before explicitly running
-`"$HJEM" standalone switch --config "$CONFIG"`. See [Nix/Hjem usage](nix/README.md)
-for manifest outputs, custom-home configuration and disposable-home testing.
+the caller. Review the manifest and destination paths before explicitly running the
+`standalone switch --config` command above. The flake exposes `#hjem-manifest`
+for inspection and `lib.mkHjemConfiguration` for custom-home configuration;
+[the integration test](tests/hjem-standalone.sh) activates only a disposable home.
 Hjem handles file conflicts and generations using upstream behavior, including
 backing up unmanaged conflicting targets with its `.backup-` prefix. Do not
 activate files already owned by Home Manager.
@@ -191,11 +203,13 @@ On macOS, the manifest includes plugins under
 Starship is built by recursively merging `no-nerd-font`, `no-runtime-versions`,
 and local TOML in that order; local values win, `python.format` is removed, and
 Kubernetes is enabled. Atuin configuration is installed with mode `0644`.
-Python paths are pinned by Nix. Builds and profile installation do not change
+Python paths are pinned by Nix. Builds alone do not change
 that directory. Private keys and mutable Resilio state are not managed.
 
-Hjem build/switch, repeated activation and unmanaged-conflict handling were
-tested in a disposable home on Apple Silicon macOS. Linux evaluation passed;
+The Hjem integration test expects 26 managed files on macOS and 21 on Linux,
+including the new `thv-patched` command. Build/switch, repeated activation and
+unmanaged-conflict handling were tested in a disposable home on Apple Silicon
+macOS. Linux evaluation passed;
 the OrbStack VM became unresponsive during the upstream Rust build, so Linux
 Hjem runtime testing remains unverified. Supported package systems are currently
 `aarch64-darwin`, `aarch64-linux`, and `x86_64-linux`. Backup and Resilio tests
@@ -203,7 +217,7 @@ pass; actual GUI operation still requires the external macOS applications.
 
 ## Resilio WebUI and SwiftBar
 
-[nix/resilio/resilio-restish](nix/resilio/resilio-restish) uses Restish to access the
+[resilio/resilio-restish](resilio/resilio-restish) uses Restish to access the
 existing licensed Resilio installation through its unofficial loopback WebUI.
 The former Python API/lifecycle client is removed. The small Python auth hook
 and response checker remain; tokens/cookies live only in request memory.
@@ -223,7 +237,7 @@ before using pause/resume. The wrapper identifies the share by path or ID:
 
 ```bash
 resilio-restish run-paused "$HOME/Backups/git-wip" -- \
-  bash "$PWD/nix/assets/scripts/backup-workflow.sh" --repo "$PWD" \
+  bash "$PWD/backup-workflow/backup-workflow.sh" --repo "$PWD" \
   --destination "$HOME/Backups/git-wip" --home "$HOME"
 ```
 
@@ -233,7 +247,7 @@ already paused stays paused. `pause`, `resume`, and `wait-paused` are also
 available. A bounded pause-state wait is **not** a guarantee that all remote
 peers have finished receiving files; destination testing remains necessary.
 
-The [SwiftBar/BitBar plugin](nix/resilio/resilio.10m.py) periodically displays
+The [SwiftBar/BitBar plugin](resilio/resilio.10m.py) periodically displays
 read-only folder status and offers Open Resilio Sync and Refresh actions.
 It uses the packaged Restish launcher. It never starts or restarts Resilio automatically during
 refresh. Enable discovery/synchronization and connect the destination through
@@ -241,7 +255,7 @@ Resilio itself; this implementation does not silently register production shares
 
 ### Unofficial API specification
 
-[nix/resilio/openapi.yaml](nix/resilio/openapi.yaml) describes the observed Resilio Sync
+[resilio/openapi.yaml](resilio/openapi.yaml) describes the observed Resilio Sync
 3.1.2 WebUI protocol, not a vendor-supported stable API. The single `/gui/`
 endpoint dispatches on its `action` query parameter. Authentication uses
 `POST /gui/token.html` plus session cookies; never log token-bearing query URLs.
@@ -251,7 +265,7 @@ updates require the full current preferences, including transfer priority.
 ### Direct Restish usage
 
 The static config, schema, lifecycle wrapper, external-auth request hook, and
-tests all live in the single canonical [nix/resilio](nix/resilio) component tree.
+tests all live in the single canonical [resilio](resilio) component tree.
 `resilio-restish` is a narrow checked launcher: it selects that config and
 helper, runs Restish directly, and validates the resulting JSON for Resilio
 application errors that may otherwise be hidden inside HTTP 200 responses.
@@ -266,8 +280,8 @@ The external hook validates and authenticates only the documented read-only
 requests, discovers the local Resilio listener, and keeps token/cookie values in
 memory. Restish performs transport/status checks; the small response checker preserves
 the same top-level `error`, nested `value.error`, and application `status`
-checks as the Python client. Use the Python client for all verified pause/restore
-behavior. Restish's first-run helper hash approval remains in force. The API is
+checks as the removed Python client. Use the lifecycle subcommands for verified
+pause/restore behavior. Restish's first-run helper hash approval remains in force. The API is
 unofficial and version-sensitive.
 
 ### Remote.it SSH command
@@ -289,29 +303,10 @@ environment recipes were removed.
 ### Focused tests
 
 ```bash
-python3 -m unittest discover -s nix/resilio/tests -v
-python3 -m unittest discover -s nix/backup/tests -v
+python3 -m unittest discover -s resilio/tests -v
+python3 -m unittest discover -s backup-workflow/tests -v
 ```
 
 Backup tests require the same modern Bash/GNU runtime as the scripts. They use
 disposable repositories, never a real backup destination. Resilio unit tests
 mock transport and lifecycle operations and do not change live shares.
-
-## Snippets
-
-### hadolint
-
-```sh
-sudo dnf install https://dl.fedoraproject.org/pub/fedora/linux/releases/38/Everything/aarch64/os/Packages/h/hadolint-2.12.0-10.fc38.aarch64.rpm
-```
-
-### brew
-
-```sh
-ln -s /home/linuxbrew/.linuxbrew/Cellar/libffi/*/lib64/libffi.so.8 /home/linuxbrew/.linuxbrew/lib/libffi.so.8
-
-brew deps hadolint --include-build --missing | grep -v -E 'cmake|gcc|llvm|rust|ninja|swig|pkg-config|go' | xargs brew install --ignore-dependencies
-brew install ruff --ignore-dependencies
-
-rm /home/linuxbrew/.linuxbrew/Homebrew/Library/Homebrew/shims/linux/super/gcc
-```

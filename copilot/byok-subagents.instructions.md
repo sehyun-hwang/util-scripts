@@ -2,7 +2,7 @@
 applyTo: "**"
 ---
 
-# Machine-wide BYOK subagent policy
+# Machine-wide Copilot subagent model policy
 
 For every subagent launch through task, Task, functions.task, or the VS Code Agent alias, the only allowed model is exactly:
 

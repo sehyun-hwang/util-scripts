@@ -1,0 +1,98 @@
+--- a/pkg/auth/remote/handler.go
++++ b/pkg/auth/remote/handler.go
+@@ -120,8 +120,13 @@
+ }
+ 
+ // validateBearerRequirement checks if Bearer auth is required without OAuth fallback
+-func (*Handler) validateBearerRequirement(authInfo *discovery.AuthInfo) error {
++func (h *Handler) validateBearerRequirement(authInfo *discovery.AuthInfo) error {
+ 	if authInfo.Type != "Bearer" {
++		return nil
++	}
++
++	// Explicit OAuth configuration takes precedence over bearer inference.
++	if h.config.Issuer != "" || (h.config.AuthorizeURL != "" && h.config.TokenURL != "") {
+ 		return nil
+ 	}
+ 
+--- a/pkg/auth/remote/handler_test.go
++++ b/pkg/auth/remote/handler_test.go
+@@ -1029,3 +1029,78 @@
+ 	assert.False(t, flowConfig.AllowPrivateIPs,
+ 		"allowPrivateIPs=false must reach OAuthFlowConfig.AllowPrivateIPs")
+ }
++
++// TestValidateBearerRequirement verifies that explicit OAuth configuration takes
++// precedence over a bare Bearer challenge without weakening existing fallbacks.
++func TestValidateBearerRequirement(t *testing.T) {
++	t.Parallel()
++
++	tests := []struct {
++		name      string
++		config    *Config
++		authInfo  *discovery.AuthInfo
++		wantError bool
++	}{
++		{
++			name:     "non-Bearer authentication is unchanged",
++			config:   &Config{},
++			authInfo: &discovery.AuthInfo{Type: "OAuth"},
++		},
++		{
++			name:     "explicit issuer bypasses Bearer requirement",
++			config:   &Config{Issuer: "https://issuer.example.com"},
++			authInfo: &discovery.AuthInfo{Type: "Bearer"},
++		},
++		{
++			name: "complete explicit endpoints bypass Bearer requirement",
++			config: &Config{
++				AuthorizeURL: "https://issuer.example.com/authorize",
++				TokenURL:     "https://issuer.example.com/token",
++			},
++			authInfo: &discovery.AuthInfo{Type: "Bearer"},
++		},
++		{
++			name:      "authorize URL alone does not bypass Bearer requirement",
++			config:    &Config{AuthorizeURL: "https://issuer.example.com/authorize"},
++			authInfo:  &discovery.AuthInfo{Type: "Bearer"},
++			wantError: true,
++		},
++		{
++			name:      "token URL alone does not bypass Bearer requirement",
++			config:    &Config{TokenURL: "https://issuer.example.com/token"},
++			authInfo:  &discovery.AuthInfo{Type: "Bearer"},
++			wantError: true,
++		},
++		{
++			name:      "plain Bearer requirement still errors",
++			config:    &Config{},
++			authInfo:  &discovery.AuthInfo{Type: "Bearer"},
++			wantError: true,
++		},
++		{
++			name:     "realm keeps backward-compatible OAuth fallback",
++			config:   &Config{},
++			authInfo: &discovery.AuthInfo{Type: "Bearer", Realm: "https://issuer.example.com"},
++		},
++		{
++			name:     "resource metadata keeps backward-compatible OAuth fallback",
++			config:   &Config{},
++			authInfo: &discovery.AuthInfo{Type: "Bearer", ResourceMetadata: "https://server.example.com/.well-known/oauth-protected-resource"},
++		},
++	}
++
++	for _, tt := range tests {
++		t.Run(tt.name, func(t *testing.T) {
++			t.Parallel()
++			handler := NewHandler(tt.config)
++			err := handler.validateBearerRequirement(tt.authInfo)
++			if tt.wantError {
++				require.Error(t, err)
++				assert.Contains(t, err.Error(), "server requires bearer token authentication")
++				return
++			}
++			require.NoError(t, err)
++		})
++	}
++}
++

@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
+restish_bin=${RESTISH_BIN:-restish}
+if [[ -n ${RESILIO_RESTISH_CONFIG:-} ]]; then
+  restish_config=$RESILIO_RESTISH_CONFIG
+elif [[ -f $script_dir/restish.json ]]; then
+  restish_config=$script_dir/restish.json
+else
+  restish_config=${XDG_CONFIG_HOME:-$HOME/.config}/restish/restish.json
+fi
+helper_bin=${RESILIO_RESTISH_AUTH_HELPER:-$script_dir/resilio-restish-auth.py}
+response_checker=${RESILIO_RESTISH_RESPONSE_CHECKER:-$script_dir/resilio-restish-response.py}
+[[ -f $restish_config ]] || {
+  checkout_root=$(cd "$script_dir/.." && pwd -P)
+  if [[ -f $checkout_root/resilio/restish.json ]]; then
+    restish_config=$checkout_root/resilio/restish.json
+    [[ -x $checkout_root/resilio/resilio-restish-auth.py ]] && helper_bin=${RESILIO_RESTISH_AUTH_HELPER:-$checkout_root/resilio/resilio-restish-auth.py}
+    [[ -x $checkout_root/resilio/resilio-restish-response.py ]] && response_checker=${RESILIO_RESTISH_RESPONSE_CHECKER:-$checkout_root/resilio/resilio-restish-response.py}
+  else
+    unset checkout_root
+  fi
+}
+
+fail() { printf 'resilio-restish: %s\n' "$*" >&2; exit 1; }
+case ${1:-} in
+  status|pause|resume|wait-paused|run-paused)
+    export RESILIO_RESTISH_WRAPPER="${BASH_SOURCE[0]}"
+    lifecycle=${RESILIO_RESTISH_LIFECYCLE:-$script_dir/resilio-lifecycle}
+    [[ -f $lifecycle ]] || lifecycle=${RESILIO_RESTISH_LIFECYCLE:-${checkout_root:-$(cd "$script_dir/.." && pwd -P)}/resilio/resilio-lifecycle}
+    exec bash "$lifecycle" "$@"
+    ;;
+  -h|--help|'')
+    cat <<'EOF'
+Usage: resilio-restish [RESTISH_ARGS...]
+
+Runs Restish with the static Resilio API configuration and external request
+hook, then checks successful HTTP responses for Resilio application errors.
+RESTISH_BIN and RESILIO_RESTISH_* may override packaged paths.
+Lifecycle: status; pause|resume|wait-paused FOLDER;
+run-paused FOLDER -- COMMAND [ARGS...]. Restores preferences even after failure.
+Pause acknowledgement does not imply completed transfer.
+EOF
+    [[ ${1:-} ]] || exit 2
+    exit 0
+    ;;
+esac
+
+if [[ $restish_bin == */* ]]; then
+  [[ -x $restish_bin ]] || fail "Restish executable is not executable: $restish_bin"
+else
+  restish_bin=$(command -v "$restish_bin") || fail "required command not found: restish"
+fi
+[[ -r $restish_config ]] || fail "static Restish config is not readable: $restish_config"
+[[ -x $helper_bin ]] || fail "auth helper is not executable: $helper_bin"
+if [[ $restish_config == "$script_dir/restish.json" && -f $script_dir/openapi.yaml ]]; then
+  restish_cwd=$(cd "$script_dir/.." && pwd -P)
+elif [[ -n ${checkout_root:-} && $restish_config == "$checkout_root/resilio/restish.json" ]]; then
+  restish_cwd=$checkout_root
+else
+  restish_cwd=$PWD
+fi
+if [[ $response_checker == */* ]]; then
+  [[ -x $response_checker ]] || fail "response checker is not executable: $response_checker"
+else
+  response_checker=$(command -v "$response_checker") || fail "response checker is not executable: $response_checker"
+fi
+
+export RSH_CONFIG=$restish_config
+export RESILIO_RESTISH_AUTH_HELPER=$helper_bin
+(cd "$restish_cwd" && "$restish_bin" "$@") | "$response_checker"

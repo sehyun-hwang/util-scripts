@@ -1,5 +1,5 @@
 {
-  description = "Standalone packages and Hjem configuration for util-scripts (secret-free source root)";
+  description = "Standalone packages and Hjem configuration for util-scripts";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
@@ -33,25 +33,66 @@
           ];
           runtimePath = lib.makeBinPath runtimePackages;
 
-          restish230 = pkgs.stdenvNoCC.mkDerivation {
+          goPkgs = import vscode-nixpkgs {
+            inherit system;
+            config.allowUnfree = false;
+          };
+
+          restish230 = goPkgs.buildGoModule {
             pname = "restish";
             version = "2.3.0";
-            src = pkgs.fetchurl {
-              url = "https://github.com/rest-sh/restish/releases/download/v2.3.0/restish-2.3.0-${
-                if system == "aarch64-darwin" then "darwin-arm64"
-                else if system == "aarch64-linux" then "linux-arm64"
-                else "linux-amd64"
-              }.tar.gz";
-              hash = {
-                aarch64-darwin = "sha256-XcjVPDGeBE++8BlU+Q6lmxP/G1cOihOCECsMYufnAtI=";
-                aarch64-linux = "sha256-1Vrj69Knnm/ajg6hJe7SUw7tYOJ+YeP/okOucq6XPJE=";
-                x86_64-linux = "sha256-XeJDU1YFl1Yv/Jl5nqeaDNIsXzyruz/7o/9em5dHM1c=";
-              }.${system};
+            src = pkgs.fetchFromGitHub {
+              owner = "rest-sh";
+              repo = "restish";
+              rev = "6305246a75121a7373563577e50e9bf522baca6b";
+              hash = "sha256-tI4o+zkKNnFrqWFEHsNt2+03Luth9KHH+x7P+WwaGNI=";
             };
-            sourceRoot = ".";
-            installPhase = ''
-              install -Dm755 restish "$out/bin/restish"
+            vendorHash = "sha256-Y0GwgrkD09WAlmyI6Oe3Kw6L62E7QRTCIThZGXbbn74=";
+            subPackages = [ "cmd/restish" ];
+            ldflags = [
+              "-s"
+              "-w"
+              "-X github.com/rest-sh/restish/v2/internal/cli.Version=2.3.0"
+            ];
+            meta = {
+              description = "CLI for interacting with REST APIs";
+              homepage = "https://rest.sh/";
+              license = lib.licenses.mit;
+              mainProgram = "restish";
+            };
+          };
+
+          toolhivePatched = goPkgs.buildGoModule {
+            pname = "thv-patched";
+            version = "0.46.0";
+            src = pkgs.fetchFromGitHub {
+              owner = "stacklok";
+              repo = "toolhive";
+              rev = "c6c425a924fac51c86cbade15d0e720e29a600ab";
+              hash = "sha256-U5WJmnVEYeE0DHNIln+N9OC6dLJzwaeF8OunhgsdmiM=";
+            };
+            patches = [ ./patches/toolhive-explicit-oauth.patch ];
+            vendorHash = "sha256-sg2W+cWmaCguL/pCH8+RrROJUDp23qHn24HeARvXhyU=";
+            subPackages = [ "cmd/thv" ];
+            ldflags = [
+              "-s"
+              "-w"
+              "-X github.com/stacklok/toolhive/pkg/versions.Version=v0.46.0-patched"
+              "-X github.com/stacklok/toolhive/pkg/versions.Commit=c6c425a924fac51c86cbade15d0e720e29a600ab"
+              "-X github.com/stacklok/toolhive/pkg/versions.BuildType=development"
+            ];
+            postInstall = ''
+              mv "$out/bin/thv" "$out/bin/thv-patched-unwrapped"
+              makeWrapper "$out/bin/thv-patched-unwrapped" "$out/bin/thv-patched" \
+                --set-default TOOLHIVE_SKIP_DESKTOP_CHECK 1
             '';
+            nativeBuildInputs = [ pkgs.makeWrapper ];
+            meta = {
+              description = "ToolHive CLI patched to prefer explicit OAuth configuration";
+              homepage = "https://github.com/stacklok/toolhive";
+              license = lib.licenses.asl20;
+              mainProgram = "thv-patched";
+            };
           };
 
           mkScript = name: source: pkgs.stdenvNoCC.mkDerivation {
@@ -69,15 +110,15 @@
             nativeBuildInputs = [ pkgs.makeWrapper ];
           };
 
-          backupGitWip = mkScript "backup-git-wip.sh" ./assets/scripts/backup-git-wip.sh;
+          backupGitWip = mkScript "backup-git-wip.sh" ./backup-workflow/backup-git-wip.sh;
 
           backupWorkflow = pkgs.stdenvNoCC.mkDerivation {
             pname = "backup-workflow";
             version = "1.0.0";
             dontUnpack = true;
             installPhase = ''
-              install -Dm755 ${./assets/scripts/backup-workflow.sh} "$out/bin/backup-workflow.sh"
-              install -Dm644 ${./assets/backup.mk} "$out/share/util-scripts/backup.mk"
+              install -Dm755 ${./backup-workflow/backup-workflow.sh} "$out/bin/backup-workflow.sh"
+              install -Dm644 ${./backup-workflow/backup.mk} "$out/share/util-scripts/backup.mk"
               substituteInPlace "$out/bin/backup-workflow.sh" \
                 --replace-fail 'wip=$script_dir/backup-git-wip.sh' 'wip=${backupGitWip}/bin/backup-git-wip.sh'
               patchShebangs "$out/bin/backup-workflow.sh"
@@ -133,22 +174,31 @@
               substituteInPlace "$out/libexec/resilio-restish-response" \
                 --replace-fail '#!/usr/bin/env python3' '#!${pkgs.python3}/bin/python3'
               install -Dm644 ${./resilio/openapi.yaml} "$out/share/resilio/openapi.yaml"
-              substitute ${./resilio/restish.json} "$out/share/resilio/restish.json" \
-                --replace-fail '@RESILIO_OPENAPI@' "$out/share/resilio/openapi.yaml" \
-                --replace-fail '@RESILIO_AUTH_HELPER@' "$out/libexec/resilio-restish-auth"
-              mkdir -p "$out/bin"
-              substitute ${./resilio/resilio-restish} "$out/bin/resilio-restish" \
-                --replace-fail '@RESTISH_BIN@' '${restish230}/bin/restish' \
-                --replace-fail '@RESTISH_CONFIG@' "$out/share/resilio/restish.json" \
-                --replace-fail '@RESILIO_AUTH_HELPER@' "$out/libexec/resilio-restish-auth" \
-                --replace-fail '@RESILIO_RESPONSE_CHECKER@' "$out/libexec/resilio-restish-response" \
-                --replace-fail '@RESILIO_LIFECYCLE@' "$out/libexec/resilio-lifecycle"
+              ${pkgs.python3}/bin/python3 - ${./resilio/restish.json} "$out/share/resilio/restish.json" \
+                "$out/share/resilio/openapi.yaml" "$out/libexec/resilio-restish-auth" <<'PY'
+              import json, sys
+              source, target, schema, helper = sys.argv[1:]
+              with open(source, encoding="utf-8") as stream:
+                  config = json.load(stream)
+              api = config["apis"]["resilio"]
+              api["spec_files"] = [schema]
+              api["profiles"]["default"]["auth"]["params"]["commandline"] = helper
+              with open(target, "w", encoding="utf-8") as stream:
+                  json.dump(config, stream, indent=2)
+                  stream.write("\n")
+              PY
+              install -Dm755 ${./resilio/resilio-restish} "$out/bin/resilio-restish"
               chmod 755 "$out/bin/resilio-restish" "$out/libexec/resilio-restish-auth" "$out/libexec/resilio-restish-response"
               substituteInPlace "$out/share/swiftbar/resilio.10m.py" \
                 --replace-fail '#!/usr/bin/env python3' '#!${pkgs.python3}/bin/python3' \
                 --replace-fail 'CLIENT = pathlib.Path.home() / ".local/bin/resilio-restish"' "CLIENT = pathlib.Path(\"$out/bin/resilio-restish\")"
               patchShebangs "$out/bin/resilio-restish" "$out/libexec/resilio-restish-auth" "$out/libexec/resilio-restish-response"
-              wrapProgram "$out/bin/resilio-restish" --prefix PATH : ${lib.makeBinPath [ pkgs.bash pkgs.coreutils pkgs.jq ]}
+              wrapProgram "$out/bin/resilio-restish" \
+                --prefix PATH : ${lib.makeBinPath [ pkgs.bash pkgs.coreutils pkgs.jq ]} \
+                --set-default RESTISH_BIN '${restish230}/bin/restish' \
+                --set-default RESILIO_RESTISH_AUTH_HELPER "$out/libexec/resilio-restish-auth" \
+                --set-default RESILIO_RESTISH_RESPONSE_CHECKER "$out/libexec/resilio-restish-response" \
+                --set-default RESILIO_RESTISH_LIFECYCLE "$out/libexec/resilio-lifecycle"
               wrapProgram "$out/libexec/resilio-restish-auth" --prefix PATH : ${lib.makeBinPath [ pkgs.lsof ]}
             '';
             nativeBuildInputs = [ pkgs.makeWrapper ];
@@ -213,11 +263,11 @@
           } ''
             starship preset no-nerd-font -o no-nerd-font.toml
             starship preset no-runtime-versions -o no-runtime-versions.toml
-            python ${./merge-starship.py} no-nerd-font.toml no-runtime-versions.toml ${./assets/shell/starship.toml} "$out"
+            python ${./shell/merge-starship.py} no-nerd-font.toml no-runtime-versions.toml ${./shell/starship.toml} "$out"
           '';
 
           gitConfig = pkgs.runCommand "util-scripts-git-config" {} ''
-            sed 's|%s|${pkgs.gh}/bin/gh|g' ${./assets/shell/gitconfig} > "$out"
+            sed 's|%s|${pkgs.gh}/bin/gh|g' ${./shell/gitconfig} > "$out"
           '';
 
           awakeLauncher = pkgs.runCommand "copilot-awake-launcher" {} ''
@@ -225,31 +275,48 @@
               ${./swiftbar/copilot-awake.10s.sh} > "$out"
           '';
 
+          awsCostPlugin = pkgs.runCommand "awsmonthcost.1h.sh" {
+            nativeBuildInputs = [ pkgs.makeWrapper ];
+          } ''
+            install -Dm755 ${./swiftbar/awsmonthcost.1h.sh} "$out"
+            wrapProgram "$out" \
+              --set-default AWS_BIN '${pkgs.awscli2}/bin/aws' \
+              --set-default JQ_BIN '${pkgs.jq}/bin/jq'
+          '';
+
+          timeMachinePlugin = pkgs.runCommand "timemachine.1m.sh" {} ''
+            cp ${./swiftbar/timemachine.1m.sh} "$out"
+            chmod 755 "$out"
+          '';
+
           homeSources = {
-            ".bash_profile" = { source = ./assets/shell/bash_profile.sh; permissions = "0644"; };
-            ".config/fish/conf.d/util-scripts.fish" = { source = ./assets/shell/config.fish; permissions = "0644"; };
-            ".config/git/ignore" = { source = ./assets/shell/gitignore; permissions = "0644"; };
+            ".bash_profile" = { source = ./shell/bash_profile.sh; permissions = "0644"; };
+            ".config/fish/conf.d/util-scripts.fish" = { source = ./shell/config.fish; permissions = "0644"; };
+            ".config/git/ignore" = { source = ./shell/gitignore; permissions = "0644"; };
             ".config/git/config" = { source = gitConfig; permissions = "0644"; };
-            ".config/atuin/config.toml" = { source = ./assets/shell/atuin.toml; permissions = "0644"; };
+            ".config/atuin/config.toml" = { source = ./shell/atuin.toml; permissions = "0644"; };
             ".config/starship.toml" = { source = starshipConfig; permissions = "0644"; };
             ".local/bin/code" = { source = "${vscodeCli}/bin/code"; permissions = "0755"; };
             ".local/bin/remoteit-ssh" = { source = "${remoteitSsh}/bin/remoteit-ssh"; permissions = "0755"; };
             ".local/bin/restish" = { source = "${restish230}/bin/restish"; permissions = "0755"; };
+            ".local/bin/thv-patched" = { source = "${toolhivePatched}/bin/thv-patched"; permissions = "0755"; };
             ".local/bin/backup-workflow.sh" = { source = "${backupWorkflow}/bin/backup-workflow.sh"; permissions = "0755"; };
             ".local/bin/backup-git-wip.sh" = { source = "${backupGitWip}/bin/backup-git-wip.sh"; permissions = "0755"; };
             ".config/restish/restish.json" = { source = "${resilio}/share/resilio/restish.json"; permissions = "0600"; };
             ".local/bin/resilio-restish" = { source = "${resilio}/bin/resilio-restish"; permissions = "0755"; };
             ".local/libexec/resilio-restish-auth" = { source = "${resilio}/libexec/resilio-restish-auth"; permissions = "0755"; };
-            ".copilot/instructions/byok-subagents.instructions.md" = { source = ./byok/byok-subagents.instructions.md; permissions = "0600"; };
-            ".copilot/hooks/byok-subagent-policy.json" = { source = ./byok/byok-subagent-policy.json; permissions = "0600"; };
-            ".copilot/local-plugins/byok-subagent-policy/plugin.json" = { source = ./byok/local-plugins/byok-subagent-policy/plugin.json; permissions = "0600"; };
-            ".copilot/local-plugins/byok-subagent-policy/com.github.copilot/hooks/hooks.json" = { source = ./byok/local-plugins/byok-subagent-policy/com.github.copilot/hooks/hooks.json; permissions = "0600"; };
-            ".copilot/local-plugins/byok-subagent-policy/scripts/byok-subagent-policy.sh" = { source = ./byok/local-plugins/byok-subagent-policy/scripts/byok-subagent-policy.sh; permissions = "0700"; };
-            ".copilot/hooks/byok-subagent-policy.sh" = { source = ./byok/local-plugins/byok-subagent-policy/scripts/byok-subagent-policy.sh; permissions = "0700"; };
+            ".copilot/instructions/byok-subagents.instructions.md" = { source = ./copilot/byok-subagents.instructions.md; permissions = "0600"; };
+            ".copilot/hooks/byok-subagent-policy.json" = { source = ./copilot/byok-subagent-policy.json; permissions = "0600"; };
+            ".copilot/local-plugins/byok-subagent-policy/plugin.json" = { source = ./copilot/local-plugins/byok-subagent-policy/plugin.json; permissions = "0600"; };
+            ".copilot/local-plugins/byok-subagent-policy/com.github.copilot/hooks/hooks.json" = { source = ./copilot/local-plugins/byok-subagent-policy/com.github.copilot/hooks/hooks.json; permissions = "0600"; };
+            ".copilot/local-plugins/byok-subagent-policy/scripts/byok-subagent-policy.sh" = { source = ./copilot/local-plugins/byok-subagent-policy/scripts/byok-subagent-policy.sh; permissions = "0700"; };
+            ".copilot/hooks/byok-subagent-policy.sh" = { source = ./copilot/local-plugins/byok-subagent-policy/scripts/byok-subagent-policy.sh; permissions = "0700"; };
           } // lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
+            "SwiftBar/awsmonthcost.1h.sh" = { source = awsCostPlugin; permissions = "0755"; };
             "SwiftBar/copilot-awake.10s.sh" = { source = awakeLauncher; permissions = "0755"; };
             "SwiftBar/copilot-awake/main.py" = { source = ./swiftbar/copilot-awake/main.py; permissions = "0755"; };
             "SwiftBar/resilio.10m.py" = { source = "${resilio}/share/swiftbar/resilio.10m.py"; permissions = "0755"; };
+            "SwiftBar/timemachine.1m.sh" = { source = timeMachinePlugin; permissions = "0755"; };
           };
 
           mkHjemConfiguration = { homeDirectory ? defaultHomes.${system} }:
@@ -289,14 +356,8 @@
             { manifest = builtins.fromJSON (builtins.unsafeDiscardStringContext (builtins.readFile "${manifest}")); }
           '';
 
-          scripts = pkgs.symlinkJoin {
-            name = "util-scripts";
-            paths = [ backupGitWip backupWorkflow remoteitSsh resilio vscodeCli restish230 ];
-          };
         in {
           packages = {
-            default = scripts;
-            util-scripts = scripts;
             backup-git-wip = backupGitWip;
             backup-workflow = backupWorkflow;
             remoteit-ssh = remoteitSsh;
@@ -304,6 +365,7 @@
             starship-config = starshipConfig;
             vscode-cli = vscodeCli;
             restish = restish230;
+            thv-patched = toolhivePatched;
             hjem = hjemCli;
             hjem-config = hjemConfig;
             hjem-manifest = manifest;
