@@ -1,0 +1,28 @@
+[user]
+	name = Sehyun Hwang
+	email = hwanghyun3@gmail.com
+
+[core]
+	editor = vim
+
+[credential "https://gist.github.com"]
+	helper = "%s auth git-credential"
+
+[credential "https://github.com"]
+	helper = "%s auth git-credential"
+
+[filter "lfs"]
+	clean = "git-lfs clean -- %f"
+	process = "git-lfs filter-process"
+	required = true
+	smudge = "git-lfs smudge -- %f"
+
+[init]
+	defaultBranch = main
+
+[credential "https://gitlab.com"]
+	helper = "glab auth git-credential"
+
+[credential "https://git-codecommit.ap-northeast-2.amazonaws.com"]
+	helper = "!aws codecommit credential-helper $@"
+	UseHttpPath = true

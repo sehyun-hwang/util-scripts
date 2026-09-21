@@ -1,0 +1,5 @@
+# https://gist.github.com/subfuzion/db7f57fff2fb6998a16c
+node_modules
+.DS_Store
+.husky/pre-commit
+**/.claude/settings.local.json

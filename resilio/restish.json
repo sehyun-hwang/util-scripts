@@ -1,0 +1,21 @@
+{
+  "apis": {
+    "resilio": {
+      "base_url": "http://127.0.0.1:8889",
+      "spec_files": [
+        "resilio/openapi.yaml"
+      ],
+      "profiles": {
+        "default": {
+          "auth": {
+            "type": "external-tool",
+            "params": {
+              "commandline": "resilio/resilio-restish-auth.py",
+              "omitbody": "true"
+            }
+          }
+        }
+      }
+    }
+  }
+}
