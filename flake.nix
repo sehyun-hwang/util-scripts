@@ -258,6 +258,40 @@
             };
           };
 
+          committingWithCommitlintSkillMd = pkgs.fetchurl {
+            url = "https://raw.githubusercontent.com/conventional-changelog/commitlint/ef4eabc80d13b323d77ab29b686cf43606b04d0e/skills/committing-with-commitlint/SKILL.md";
+            hash = "sha256-5/BHwXggGmGDMgY0umU3Ea+ivIZxcZIxvzl6IGdqEYo=";
+          };
+
+          committingWithCommitlint = pkgs.runCommand "committing-with-commitlint" {} ''
+            mkdir -p "$out/committing-with-commitlint"
+            cp ${committingWithCommitlintSkillMd} "$out/committing-with-commitlint/SKILL.md"
+          '';
+
+          committingWithCommitlintOCI = let
+            image = pkgs.dockerTools.buildImage {
+              name = "committing-with-commitlint";
+              tag = "latest";
+              created = "1970-01-01T00:00:00Z";
+              copyToRoot = pkgs.runCommand "skill-files" {} ''
+                mkdir -p $out
+                cp ${committingWithCommitlintSkillMd} $out/SKILL.md
+              '';
+              config.Labels = {
+                "dev.toolhive.skills.name" = "committing-with-commitlint";
+                "dev.toolhive.skills.description" = "Use when writing a git commit message in a repository that uses commitlint — read the enforced convention first, write a compliant message, and self-correct from hook rejections instead of bypassing them";
+                "dev.toolhive.skills.version" = "";
+                "dev.toolhive.skills.files" = builtins.toJSON [ "SKILL.md" ];
+                "dev.toolhive.skills.allowedTools" = "null";
+                "dev.toolhive.skills.license" = "";
+              };
+            };
+          in pkgs.runCommand "committing-with-commitlint-oci" {
+            nativeBuildInputs = [ pkgs.skopeo ];
+          } ''
+            skopeo --insecure-policy copy docker-archive:${image} oci:$out:committing-with-commitlint
+          '';
+
           starshipConfig = pkgs.runCommand "starship.toml" {
             nativeBuildInputs = [ pkgs.starship (pkgs.python3.withPackages (p: [ p.toml ])) ];
           } ''
@@ -271,22 +305,18 @@
           '';
 
           awakeLauncher = pkgs.runCommand "copilot-awake-launcher" {} ''
-            sed 's|exec python3|exec ${pkgs.python3}/bin/python3|' \
+            sed -e 's|exec python3|exec ${pkgs.python3}/bin/python3|' \
+                -e 's|"$(dirname "$0")/copilot-awake/main.py"|${./swiftbar/copilot-awake/main.py}|' \
               ${./swiftbar/copilot-awake.10s.sh} > "$out"
           '';
 
-          awsCostPlugin = pkgs.runCommand "awsmonthcost.1h.sh" {
+          statusPlugin = pkgs.runCommand "status.1m.py" {
             nativeBuildInputs = [ pkgs.makeWrapper ];
           } ''
-            install -Dm755 ${./swiftbar/awsmonthcost.1h.sh} "$out"
+            install -Dm755 ${./swiftbar/status.1m.py} "$out"
             wrapProgram "$out" \
               --set-default AWS_BIN '${pkgs.awscli2}/bin/aws' \
-              --set-default JQ_BIN '${pkgs.jq}/bin/jq'
-          '';
-
-          timeMachinePlugin = pkgs.runCommand "timemachine.1m.sh" {} ''
-            cp ${./swiftbar/timemachine.1m.sh} "$out"
-            chmod 755 "$out"
+              --set-default RESILIO_CLIENT '${resilio}/bin/resilio-restish'
           '';
 
           homeSources = {
@@ -305,18 +335,18 @@
             ".config/restish/restish.json" = { source = "${resilio}/share/resilio/restish.json"; permissions = "0600"; };
             ".local/bin/resilio-restish" = { source = "${resilio}/bin/resilio-restish"; permissions = "0755"; };
             ".local/libexec/resilio-restish-auth" = { source = "${resilio}/libexec/resilio-restish-auth"; permissions = "0755"; };
+            ".claude/skills/committing-with-commitlint/SKILL.md" = { source = "${committingWithCommitlint}/committing-with-commitlint/SKILL.md"; permissions = "0644"; };
             ".copilot/instructions/byok-subagents.instructions.md" = { source = ./copilot/byok-subagents.instructions.md; permissions = "0600"; };
             ".copilot/hooks/byok-subagent-policy.json" = { source = ./copilot/byok-subagent-policy.json; permissions = "0600"; };
+            ".copilot/hooks/atuin.json" = { source = ./copilot/atuin.json; permissions = "0600"; };
+            ".copilot/hooks/atuin-wrapper.sh" = { source = ./copilot/atuin-wrapper.sh; permissions = "0700"; };
             ".copilot/local-plugins/byok-subagent-policy/plugin.json" = { source = ./copilot/local-plugins/byok-subagent-policy/plugin.json; permissions = "0600"; };
             ".copilot/local-plugins/byok-subagent-policy/com.github.copilot/hooks/hooks.json" = { source = ./copilot/local-plugins/byok-subagent-policy/com.github.copilot/hooks/hooks.json; permissions = "0600"; };
             ".copilot/local-plugins/byok-subagent-policy/scripts/byok-subagent-policy.sh" = { source = ./copilot/local-plugins/byok-subagent-policy/scripts/byok-subagent-policy.sh; permissions = "0700"; };
             ".copilot/hooks/byok-subagent-policy.sh" = { source = ./copilot/local-plugins/byok-subagent-policy/scripts/byok-subagent-policy.sh; permissions = "0700"; };
           } // lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
-            "SwiftBar/awsmonthcost.1h.sh" = { source = awsCostPlugin; permissions = "0755"; };
+            "SwiftBar/status.1m.py" = { source = statusPlugin; permissions = "0755"; };
             "SwiftBar/copilot-awake.10s.sh" = { source = awakeLauncher; permissions = "0755"; };
-            "SwiftBar/copilot-awake/main.py" = { source = ./swiftbar/copilot-awake/main.py; permissions = "0755"; };
-            "SwiftBar/resilio.10m.py" = { source = "${resilio}/share/swiftbar/resilio.10m.py"; permissions = "0755"; };
-            "SwiftBar/timemachine.1m.sh" = { source = timeMachinePlugin; permissions = "0755"; };
           };
 
           mkHjemConfiguration = { homeDirectory ? defaultHomes.${system} }:
@@ -366,6 +396,8 @@
             vscode-cli = vscodeCli;
             restish = restish230;
             thv-patched = toolhivePatched;
+            committing-with-commitlint = committingWithCommitlint;
+            committing-with-commitlint-oci = committingWithCommitlintOCI;
             hjem = hjemCli;
             hjem-config = hjemConfig;
             hjem-manifest = manifest;
