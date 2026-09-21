@@ -1,0 +1,332 @@
+openapi: 3.1.2
+info:
+  title: Resilio Sync Local WebUI API (Unofficial, Observed Subset)
+  version: 0.2.0
+  description: >-
+    Unofficial documentation for a limited set of Resilio Sync local WebUI
+    actions. This is not a stable public REST API. Every action is a query on
+    one endpoint, authenticated with the token and cookies obtained from
+    POST /gui/token.html. No production registration or remote API is implied.
+servers:
+  - url: http://127.0.0.1:{port}
+    description: Local Resilio Sync WebUI listener discovered from the storage PID
+    variables:
+      port:
+        default: "8889"
+paths:
+  /gui/token.html:
+    post:
+      operationId: obtainWebUiToken
+      summary: Obtain an HTML token and establish WebUI cookies
+      responses:
+        "200":
+          description: HTML containing an element whose id is token
+          headers:
+            Set-Cookie:
+              description: WebUI cookies that must be preserved for action calls
+              schema: { type: string }
+          content:
+            text/html:
+              schema: { type: string }
+              examples:
+                observedShape:
+                  value: '<div id="token">opaque-token</div>'
+        default:
+          $ref: "#/components/responses/TransportError"
+  /gui/:
+    get:
+      operationId: webUiAction
+      summary: Invoke one local WebUI action
+      description: >-
+        Parameters form an action-dependent union because OpenAPI query
+        parameters cannot express all conditional requirements. getappinfo,
+        getsysteminfo, licenseagreed, getsyncfolders, folderpref,
+        setfolderpref, and addsyncfolder are observed actions. getsynclink is
+        inferred from client source only and is explicitly unverified.
+        setfolderpref requires id and the complete current scalar preference
+        mapping, with only intended values changed. Application errors can be
+        returned in error or value.error while HTTP status remains 200.
+      parameters:
+        - name: token
+          in: query
+          required: true
+          x-cli-ignore: true
+          description: >-
+            Opaque token from /gui/token.html; the Restish external-tool auth
+            helper injects it only into the in-memory outgoing request.
+          schema: { type: string }
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - getappinfo
+              - getsysteminfo
+              - licenseagreed
+              - getsyncfolders
+              - folderpref
+              - setfolderpref
+              - addsyncfolder
+              - getsynclink
+        - $ref: "#/components/parameters/FolderId"
+        - $ref: "#/components/parameters/Path"
+        - $ref: "#/components/parameters/Secret"
+        - $ref: "#/components/parameters/Force"
+        - $ref: "#/components/parameters/CanEncrypt"
+        - $ref: "#/components/parameters/DeleteToTrash"
+        - $ref: "#/components/parameters/IsWritable"
+        - $ref: "#/components/parameters/Paused"
+        - $ref: "#/components/parameters/ReadOnlySecret"
+        - $ref: "#/components/parameters/Relay"
+        - $ref: "#/components/parameters/SearchLan"
+        - $ref: "#/components/parameters/SecretType"
+        - $ref: "#/components/parameters/SelectiveSync"
+        - $ref: "#/components/parameters/Stopped"
+        - $ref: "#/components/parameters/TransferPriority"
+        - $ref: "#/components/parameters/UseHosts"
+        - $ref: "#/components/parameters/UseTracker"
+      responses:
+        "200":
+          description: >-
+            Action response. Inspect status, error, and value.error; HTTP 200
+            alone does not indicate application success.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/AppInfoResponse"
+                  - $ref: "#/components/schemas/SystemInfoResponse"
+                  - $ref: "#/components/schemas/LicenseAgreedResponse"
+                  - $ref: "#/components/schemas/GetSyncFoldersResponse"
+                  - $ref: "#/components/schemas/FolderPreferenceResponse"
+                  - $ref: "#/components/schemas/SetFolderPreferenceResponse"
+                  - $ref: "#/components/schemas/AddSyncFolderResponse"
+                  - $ref: "#/components/schemas/GetSyncLinkResponse"
+                  - $ref: "#/components/schemas/ApplicationErrorResponse"
+        default:
+          $ref: "#/components/responses/TransportError"
+components:
+  parameters:
+    FolderId:
+      name: id
+      in: query
+      description: Required by folderpref and setfolderpref; may identify sharing actions.
+      schema: { type: string }
+    Path:
+      name: path
+      in: query
+      description: Required filesystem path for addsyncfolder.
+      schema: { type: string }
+    Secret:
+      name: secret
+      in: query
+      description: >-
+        Required folder secret for addsyncfolder. This is sensitive and must
+        never be logged. Query transport is local HTTP only.
+      schema: { type: string }
+    Force:
+      name: force
+      in: query
+      description: Observed addsyncfolder boolean option, encoded true or false.
+      schema: { type: boolean }
+    CanEncrypt:
+      name: canencrypt
+      in: query
+      description: Complete current scalar value required by setfolderpref.
+      schema: { type: boolean }
+    DeleteToTrash:
+      name: deletetotrash
+      in: query
+      description: Complete current scalar value required by setfolderpref.
+      schema: { type: boolean }
+    IsWritable:
+      name: iswritable
+      in: query
+      description: Complete current scalar value required by setfolderpref.
+      schema: { type: boolean }
+    Paused:
+      name: paused
+      in: query
+      description: Desired setfolderpref value, encoded true or false.
+      schema: { type: boolean }
+    ReadOnlySecret:
+      name: readonlysecret
+      in: query
+      description: Complete current scalar value required by setfolderpref.
+      schema: { type: boolean }
+    Relay:
+      name: relay
+      in: query
+      description: Complete current scalar value required by setfolderpref.
+      schema: { type: boolean }
+    SearchLan:
+      name: searchlan
+      in: query
+      description: Complete current scalar value required by setfolderpref.
+      schema: { type: boolean }
+    SecretType:
+      name: secrettype
+      in: query
+      description: Complete current scalar value required by setfolderpref.
+      schema: { type: [string, number, boolean, "null"] }
+    SelectiveSync:
+      name: selectivesync
+      in: query
+      description: >-
+        Required addsyncfolder boolean option and a complete current scalar
+        value for setfolderpref; encoded true or false.
+      schema: { type: boolean }
+    Stopped:
+      name: stopped
+      in: query
+      description: Complete current scalar value required by setfolderpref.
+      schema: { type: boolean }
+    TransferPriority:
+      name: transferpriority
+      in: query
+      description: Complete current scalar value required by setfolderpref.
+      schema: { type: [string, number, boolean, "null"] }
+    UseHosts:
+      name: usehosts
+      in: query
+      description: Complete current scalar value required by setfolderpref.
+      schema: { type: boolean }
+    UseTracker:
+      name: usetracker
+      in: query
+      description: Complete current scalar value required by setfolderpref.
+      schema: { type: boolean }
+  schemas:
+    ObservedStatusResponse:
+      type: object
+      required: [status]
+      properties:
+        status: { type: integer, const: 200 }
+        value:
+          description: Action-specific value whose members are not asserted here.
+      additionalProperties: true
+    AppInfoResponse:
+      allOf:
+        - $ref: "#/components/schemas/ObservedStatusResponse"
+      description: Observed getappinfo response; value members are version-dependent.
+      x-verification-status: observed
+    SystemInfoResponse:
+      allOf:
+        - $ref: "#/components/schemas/ObservedStatusResponse"
+      description: Observed getsysteminfo response; value members are version-dependent.
+      x-verification-status: observed
+    LicenseAgreedResponse:
+      allOf:
+        - $ref: "#/components/schemas/ObservedStatusResponse"
+      description: Observed licenseagreed onboarding/status response.
+      x-verification-status: observed
+    FolderSummary:
+      type: object
+      description: Observed folder members used by this client; other members may exist.
+      properties:
+        id: { type: string }
+        path: { type: string }
+      additionalProperties: true
+    FolderPreferences:
+      type: object
+      required:
+        - canencrypt
+        - deletetotrash
+        - iswritable
+        - paused
+        - readonlysecret
+        - relay
+        - searchlan
+        - secrettype
+        - selectivesync
+        - stopped
+        - transferpriority
+        - usehosts
+        - usetracker
+      properties:
+        canencrypt: { type: boolean }
+        deletetotrash: { type: boolean }
+        iswritable: { type: boolean }
+        paused: { type: boolean }
+        readonlysecret: { type: boolean }
+        relay: { type: boolean }
+        searchlan: { type: boolean }
+        secrettype: { type: [string, number, boolean, "null"] }
+        selectivesync: { type: boolean }
+        stopped: { type: boolean }
+        transferpriority: { type: [string, number, boolean, "null"] }
+        usehosts: { type: boolean }
+        usetracker: { type: boolean }
+      additionalProperties:
+        type: [string, number, boolean, "null"]
+    GetSyncFoldersResponse:
+      type: object
+      required: [folders, status]
+      properties:
+        folders:
+          type: array
+          items: { $ref: "#/components/schemas/FolderSummary" }
+        status: { type: integer, const: 200 }
+      additionalProperties: true
+      x-verification-status: observed
+    FolderPreferenceResponse:
+      type: object
+      required: [value, status]
+      properties:
+        value: { $ref: "#/components/schemas/FolderPreferences" }
+        status: { type: integer, const: 200 }
+      additionalProperties: true
+      x-verification-status: observed
+    SetFolderPreferenceResponse:
+      allOf:
+        - $ref: "#/components/schemas/ObservedStatusResponse"
+      description: Observed setfolderpref success response.
+      x-verification-status: observed
+    AddSyncFolderResponse:
+      allOf:
+        - $ref: "#/components/schemas/ObservedStatusResponse"
+      description: >-
+        Observed addsyncfolder response for path, secret, selectivesync, and
+        force. Application errors 105, 200, and 201 have been observed.
+      x-verification-status: observed
+    GetSyncLinkResponse:
+      type: object
+      description: >-
+        Inferred sharing action from client source only. Request requirements
+        and response members have not been runtime-verified and are not a
+        stable contract.
+      additionalProperties: true
+      x-verification-status: inferred-from-client-source-unverified
+    ApplicationErrorResponse:
+      type: object
+      properties:
+        status:
+          description: May still be 200 even when an application error exists.
+        error:
+          description: Top-level application error value.
+        value:
+          type: object
+          properties:
+            error:
+              description: Nested application error value.
+              oneOf:
+                - type: integer
+                  enum: [105, 200, 201]
+                - type: string
+            code:
+              description: Optional observed numeric error representation.
+              type: integer
+              enum: [105, 200, 201]
+          additionalProperties: true
+      anyOf:
+        - required: [error]
+        - required: [value]
+      additionalProperties: true
+      description: >-
+        Generic WebUI application error. Codes 105, 200, and 201 are documented
+        specifically because they were observed from addsyncfolder; other
+        actions or versions may return other values.
+  responses:
+    TransportError:
+      description: HTTP or connection-level failure; response shape is unspecified.

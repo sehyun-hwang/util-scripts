@@ -1,0 +1,21 @@
+{
+  "apis": {
+    "resilio": {
+      "base_url": "http://127.0.0.1:8889",
+      "spec_files": [
+        "@RESILIO_OPENAPI@"
+      ],
+      "profiles": {
+        "default": {
+          "auth": {
+            "type": "external-tool",
+            "params": {
+              "commandline": "@RESILIO_AUTH_HELPER@",
+              "omitbody": "true"
+            }
+          }
+        }
+      }
+    }
+  }
+}

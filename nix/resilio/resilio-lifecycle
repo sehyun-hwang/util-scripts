@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+set -euo pipefail
+wrapper=${RESILIO_RESTISH_WRAPPER:?}
+[[ ${RESILIO_WAIT_TIMEOUT:-15} =~ ^[1-9][0-9]*$ ]] || { echo 'RESILIO_WAIT_TIMEOUT must be a positive integer' >&2; exit 2; }
+request() { "$wrapper" get "resilio/gui/" --rsh-no-cache --rsh-retry 0 --rsh-timeout 3s -o json --rsh-query "action=$1" "${@:2}"; }
+prefs() { request folderpref --rsh-query "id=$folder_id" | jq -ce '.value | objects'; }
+setprefs() {
+  local value=$1 key encoded
+  jq -e '. as $prefs | all(["canencrypt","deletetotrash","iswritable","paused","readonlysecret","relay","searchlan","secrettype","selectivesync","stopped","transferpriority","usehosts","usetracker"][]; . as $key | $prefs | has($key))' <<<"$value" >/dev/null || return 1
+  local -a args=(--rsh-query "id=$folder_id")
+  while IFS= read -r encoded; do args+=(--rsh-query "$encoded"); done < <(
+    jq -r 'to_entries[] | select(.key != "id" and .key != "action" and .key != "token") | "\(.key)=\(.value | if type == "string" then . else tojson end)"' <<<"$value")
+  request setfolderpref "${args[@]}" >/dev/null
+}
+waitstate() {
+  local desired=$1 deadline=$((SECONDS + ${RESILIO_WAIT_TIMEOUT:-15}))
+  while [[ $(prefs | jq -r '.paused') != "$desired" ]]; do
+    (( SECONDS < deadline )) || { echo 'Timed out waiting for folder state' >&2; return 1; }
+    sleep 0.25
+  done
+}
+action=$1; shift
+if [[ $action == status ]]; then
+  folders=$(request getsyncfolders | jq -ce '.folders | arrays')
+  summaries='[]'
+  while IFS= read -r folder; do
+    folder_id=$(jq -er '.id' <<<"$folder")
+    preferences=$(prefs)
+    summary=$(jq -c --argjson preferences "$preferences" '{id, path, paused: $preferences.paused, stopped: $preferences.stopped}' <<<"$folder")
+    summaries=$(jq -c --argjson summary "$summary" '. + [$summary]' <<<"$summaries")
+  done < <(jq -c '.[]' <<<"$folders")
+  jq -n --argjson folders "$summaries" '{folders: $folders}'
+  exit
+fi
+reference=${1:?Folder id or absolute path required}; shift
+folder_id=$(request getsyncfolders | jq -er --arg ref "$reference" '[.folders[] | select((.id|tostring) == $ref or .path == $ref)] | if length == 1 then .[0].id else error("Folder not found or ambiguous") end')
+original=$(prefs)
+jq -e 'has("paused") and has("transferpriority")' <<<"$original" >/dev/null
+case $action in
+ pause|resume)
+   state=true; [[ $action == pause ]] || state=false
+   setprefs "$(jq --argjson state "$state" '.paused=$state' <<<"$original")"
+   waitstate "$state" ;;
+ wait-paused) waitstate true ;;
+ run-paused)
+   [[ ${1:-} != -- ]] || shift
+   (( $# )) || { echo 'Command required' >&2; exit 2; }
+   restore() {
+     local status=$?
+     trap - EXIT HUP INT TERM
+     if [[ $(jq -r '.paused' <<<"$original") != true ]]; then
+       setprefs "$original" && waitstate false || status=1
+     fi
+     exit "$status"
+   }
+   child=
+   interrupted() {
+     if [[ -n $child ]]; then
+       kill -TERM "$child" 2>/dev/null || true
+       wait "$child" 2>/dev/null || true
+     fi
+     exit "$1"
+   }
+   trap restore EXIT
+   trap 'interrupted 129' HUP
+   trap 'interrupted 130' INT
+   trap 'interrupted 143' TERM
+   if [[ $(jq -r '.paused' <<<"$original") != true ]]; then
+     setprefs "$(jq '.paused=true' <<<"$original")"
+     waitstate true
+   fi
+   "$@" &
+   child=$!
+   wait "$child" ;;
+ *) echo 'Unknown lifecycle action' >&2; exit 2 ;;
+esac

@@ -32,8 +32,5 @@ disabled = true
 [kubernetes]
 disabled = false
 
-[kubernetes]
-disabled = false
-
 [aws]
 format = 'on [$symbol($profile )(\($region\) )]($style)'
