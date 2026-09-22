@@ -159,14 +159,48 @@ Do not use `path:.`, which copies the whole working tree to the Nix store. Compo
 are no compatibility mirrors.
 
 Available individual outputs include `#backup-workflow`, `#backup-git-wip`,
-`#remoteit-ssh`, `#resilio`, `#restish`, `#thv-patched`, `#awscli2`, and
-`#vscode-cli`. Restish 2.3.0 is built from tagged source commit
+`#remoteit-ssh`, `#resilio`, `#restish`, `#thv-patched`, `#awscli2`,
+`#vscode-cli`, `#committing-with-commitlint`, and
+`#committing-with-commitlint-oci`. Restish 2.3.0 is built from tagged source commit
 `6305246a75121a7373563577e50e9bf522baca6b`, not a release binary. ToolHive
 0.46.0 is built from commit `c6c425a924fac51c86cbade15d0e720e29a600ab`
 with [the explicit-OAuth patch](patches/toolhive-explicit-oauth.patch). The
 `thv-patched` wrapper defaults `TOOLHIVE_SKIP_DESKTOP_CHECK=1`; an explicitly
 set environment value overrides the default, and the existing `thv` command is
 left untouched.
+
+### ToolHive skill installation
+
+The `committing-with-commitlint` skill is packaged as an OCI artifact built
+with `dockerTools.buildImage` and `skopeo`. Hjem installs the SKILL.md to
+`~/.claude/skills/` for direct use. To install it into the ToolHive skill
+store:
+
+```bash
+nix build .#committing-with-commitlint-oci
+
+# Copy blobs into the thv store
+STORE=~/Library/Application\ Support/ToolHive/skills
+cp result/blobs/sha256/* "$STORE/blobs/sha256/"
+
+# Merge the OCI index entry (adds the local-build annotation)
+python3 -c "
+import json, sys
+store_path, new_path = '$STORE/index.json', 'result/index.json'
+with open(store_path) as f: store = json.load(f)
+with open(new_path) as f: new = json.load(f)
+refs = {m.get('annotations',{}).get('org.opencontainers.image.ref.name') for m in store.get('manifests',[])}
+for m in new['manifests']:
+    ref = m.get('annotations',{}).get('org.opencontainers.image.ref.name')
+    if ref not in refs:
+        m.setdefault('annotations',{})['dev.stacklok.toolhive.local-build'] = 'true'
+        store['manifests'].append(m)
+with open(store_path,'w') as f: json.dump(store, f, separators=(',',':'))
+"
+
+# Install and register with Claude Code
+thv-patched skill install committing-with-commitlint --clients claude-code
+```
 
 Resilio itself remains an external application. The stale ECR, Lambda, and
 secret helper sources have been removed. Hjem installs `code`, `remoteit-ssh`,
