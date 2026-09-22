@@ -177,26 +177,10 @@ with `dockerTools.buildImage` and `skopeo`. Hjem installs the SKILL.md to
 store:
 
 ```bash
-nix build .#committing-with-commitlint-oci
-
-# Copy blobs into the thv store
-STORE=~/Library/Application\ Support/ToolHive/skills
-cp result/blobs/sha256/* "$STORE/blobs/sha256/"
-
-# Merge the OCI index entry (adds the local-build annotation)
-python3 -c "
-import json, sys
-store_path, new_path = '$STORE/index.json', 'result/index.json'
-with open(store_path) as f: store = json.load(f)
-with open(new_path) as f: new = json.load(f)
-refs = {m.get('annotations',{}).get('org.opencontainers.image.ref.name') for m in store.get('manifests',[])}
-for m in new['manifests']:
-    ref = m.get('annotations',{}).get('org.opencontainers.image.ref.name')
-    if ref not in refs:
-        m.setdefault('annotations',{})['dev.stacklok.toolhive.local-build'] = 'true'
-        store['manifests'].append(m)
-with open(store_path,'w') as f: json.dump(store, f, separators=(',',':'))
-"
+# Build the OCI artifact with Nix and copy into the thv store
+skopeo --insecure-policy copy \
+  "oci:$(nix build .#committing-with-commitlint-oci --print-out-paths):committing-with-commitlint" \
+  "oci:$HOME/Library/Application Support/ToolHive/skills:committing-with-commitlint"
 
 # Install and register with Claude Code
 thv-patched skill install committing-with-commitlint --clients claude-code

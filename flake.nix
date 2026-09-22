@@ -287,9 +287,11 @@
               };
             };
           in pkgs.runCommand "committing-with-commitlint-oci" {
-            nativeBuildInputs = [ pkgs.skopeo ];
+            nativeBuildInputs = [ pkgs.skopeo pkgs.jq ];
           } ''
             skopeo --insecure-policy copy docker-archive:${image} oci:$out:committing-with-commitlint
+            jq '.manifests[0].annotations["dev.stacklok.toolhive.local-build"] = "true"' \
+              $out/index.json > index.tmp && mv index.tmp $out/index.json
           '';
 
           starshipConfig = pkgs.runCommand "starship.toml" {
