@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "hooks": {
+    "userPromptSubmitted": [
+      {
+        "type": "command",
+        "bash": "/bin/bash \"$HOME/.copilot/hooks/amphetamine-helper.sh\"",
+        "timeoutSec": 5
+      }
+    ]
+  }
+}

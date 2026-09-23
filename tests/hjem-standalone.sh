@@ -39,8 +39,8 @@ hjem=$(nix build --no-link --print-out-paths "${flake}#hjem")/bin/hjem
 "$hjem" standalone build --config "$conf" --state-dir "$state"
 "$hjem" standalone switch --config "$conf" --state-dir "$state"
 
-expected=21
-if [[ $system == *-darwin ]]; then expected=26; fi
+expected=24
+if [[ $system == *-darwin ]]; then expected=29; fi
 actual=$(find "$home" -type f | wc -l | tr -d ' ')
 [[ $actual == "$expected" ]] || { echo "expected $expected managed files, got $actual" >&2; exit 1; }
 [[ ! -e "$home/.ssh/id_ed25519" ]]
@@ -54,6 +54,12 @@ grep -q '"type":"external-tool"\|"type": "external-tool"' "$home/.config/restish
 if [[ $system == *-darwin ]]; then
   [[ -x "$home/SwiftBar/awsmonthcost.1h.sh" ]]
   [[ -x "$home/SwiftBar/timemachine.1m.sh" ]]
+  [[ -x "$home/Applications/Amphetamine Helper.app/Contents/MacOS/AmphetamineHelper" ]]
+  [[ -f "$home/.copilot/hooks/amphetamine-helper.json" ]]
+  [[ ! -e "$home/SwiftBar/copilot-awake.10s.sh" ]]
+else
+  [[ ! -e "$home/Applications/Amphetamine Helper.app" ]]
+  [[ ! -e "$home/.copilot/hooks/amphetamine-helper.json" ]]
 fi
 "$home/.local/bin/code" --version
 [[ $("$home/.local/bin/remoteit-ssh" --help 2>&1) == *"usage: remoteit-ssh"* ]]

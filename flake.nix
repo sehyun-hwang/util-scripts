@@ -306,11 +306,24 @@
             sed 's|%s|${pkgs.gh}/bin/gh|g' ${./shell/gitconfig} > "$out"
           '';
 
-          awakeLauncher = pkgs.runCommand "copilot-awake-launcher" {} ''
-            sed -e 's|exec python3|exec ${pkgs.python3}/bin/python3|' \
-                -e 's|"$(dirname "$0")/copilot-awake/main.py"|${./swiftbar/copilot-awake/main.py}|' \
-              ${./swiftbar/copilot-awake.10s.sh} > "$out"
-          '';
+          amphetamineHelper = lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
+            app = pkgs.stdenv.mkDerivation {
+              pname = "amphetamine-helper";
+              version = "1.0.0";
+              dontUnpack = true;
+              buildPhase = ''
+                runHook preBuild
+                $CC -fobjc-arc -framework AppKit -framework Foundation ${./amphetamine-helper/main.m} -o AmphetamineHelper
+                runHook postBuild
+              '';
+              installPhase = ''
+                app="$out/Applications/Amphetamine Helper.app/Contents"
+                install -Dm755 AmphetamineHelper "$app/MacOS/AmphetamineHelper"
+                install -m644 ${./amphetamine-helper/Info.plist} "$app/Info.plist"
+              '';
+              meta.platforms = lib.platforms.darwin;
+            };
+          };
 
           statusPlugin = pkgs.runCommand "status.1m.py" {
             nativeBuildInputs = [ pkgs.makeWrapper ];
@@ -348,7 +361,10 @@
             ".copilot/hooks/byok-subagent-policy.sh" = { source = ./copilot/local-plugins/byok-subagent-policy/scripts/byok-subagent-policy.sh; permissions = "0700"; };
           } // lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
             "SwiftBar/status.1m.py" = { source = statusPlugin; permissions = "0755"; };
-            "SwiftBar/copilot-awake.10s.sh" = { source = awakeLauncher; permissions = "0755"; };
+            "Applications/Amphetamine Helper.app/Contents/MacOS/AmphetamineHelper" = { source = "${amphetamineHelper.app}/Applications/Amphetamine Helper.app/Contents/MacOS/AmphetamineHelper"; permissions = "0755"; };
+            "Applications/Amphetamine Helper.app/Contents/Info.plist" = { source = "${amphetamineHelper.app}/Applications/Amphetamine Helper.app/Contents/Info.plist"; permissions = "0644"; };
+            ".copilot/hooks/amphetamine-helper.json" = { source = ./amphetamine-helper/hook.json; permissions = "0600"; };
+            ".copilot/hooks/amphetamine-helper.sh" = { source = ./amphetamine-helper/launch.sh; permissions = "0700"; };
           };
 
           mkHjemConfiguration = { homeDirectory ? defaultHomes.${system} }:
@@ -403,6 +419,9 @@
             hjem = hjemCli;
             hjem-config = hjemConfig;
             hjem-manifest = manifest;
+          } // lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
+            amphetamine-helper = amphetamineHelper.app;
+          } // {
             inherit (pkgs) awscli2;
           };
           inherit mkHjemConfiguration hjemConfiguration;

@@ -5,6 +5,13 @@
 The legacy Makefile and its duplicate installers have been removed. Inventory
 capture remains available through the canonical [backup-workflow/backup.mk](backup-workflow/backup.mk).
 
+## Secret scanning
+
+Install Betterleaks on your PATH (for example, `nix profile add nixpkgs#betterleaks`)
+and run `pre-commit install` in this checkout. The `betterleaks-system` hook in
+[.pre-commit-config.yaml](.pre-commit-config.yaml) scans staged changes with redacted
+output before commits. Run `pre-commit run betterleaks-system` to check them manually.
+
 ## Usage
 
 ### VS Code
@@ -129,7 +136,8 @@ untracked files for private information before sharing a destination.
 ## Install with Hjem
 
 The [root flake](flake.nix) packages the tools and configuration assets,
-the backup commands, and all five SwiftBar plugin files. Hjem standalone handles
+the backup commands, the remaining SwiftBar status plugins, and the macOS-only
+Amphetamine Helper app and Copilot hook. Hjem standalone handles
 declarative file activation and command installation; no separate package profile is needed.
 This does not modify existing Home Manager, nix-darwin, NixOS configuration, or
 Python virtual environments. Do not assign the same destination files to both
@@ -162,7 +170,7 @@ are no compatibility mirrors.
 Available individual outputs include `#backup-workflow`, `#backup-git-wip`,
 `#remoteit-ssh`, `#resilio`, `#restish`, `#thv-patched`, `#awscli2`,
 `#vscode-cli`, `#committing-with-commitlint`, and
-`#committing-with-commitlint-oci`. Restish 2.3.0 is built from tagged source commit
+`#committing-with-commitlint-oci`, and (on macOS) `#amphetamine-helper`. Restish 2.3.0 is built from tagged source commit
 `6305246a75121a7373563577e50e9bf522baca6b`, not a release binary. ToolHive
 0.46.0 is built from commit `c6c425a924fac51c86cbade15d0e720e29a600ab`
 with [the explicit-OAuth patch](patches/toolhive-explicit-oauth.patch). The
@@ -172,11 +180,6 @@ left untouched.
 
 ### ToolHive skill installation
 
-The `committing-with-commitlint` skill is packaged as an OCI artifact built
-with `dockerTools.buildImage` and `skopeo`. Hjem installs the SKILL.md to
-`~/.claude/skills/` for direct use. To install it into the ToolHive skill
-store:
-
 ```bash
 # Build the OCI artifact with Nix and copy into the thv store
 skopeo --insecure-policy copy \
@@ -184,7 +187,7 @@ skopeo --insecure-policy copy \
   "oci:$HOME/Library/Application Support/ToolHive/skills:committing-with-commitlint"
 
 # Install and register with Claude Code
-thv-patched skill install committing-with-commitlint --clients claude-code
+thv-patched skill install committing-with-commitlint
 ```
 
 Resilio itself remains an external application. The stale ECR, Lambda, and
@@ -217,15 +220,27 @@ Hjem handles file conflicts and generations using upstream behavior, including
 backing up unmanaged conflicting targets with its `.backup-` prefix. Do not
 activate files already owned by Home Manager.
 
-On macOS, the manifest includes plugins under
+On macOS, the manifest includes the unrelated status plugins under
 `~/SwiftBar`; select that folder in SwiftBar (preferences are not changed automatically).
+The legacy Copilot Awake plugin is replaced by `~/Applications/Amphetamine Helper.app`
+and `~/.copilot/hooks/amphetamine-helper.json` / `.sh`. The prompt-submitted hook
+opens the single shared native menu-bar process without reading or recording prompts.
+Its cup icon shows the number of working and input-waiting sessions; the menu lists
+short session IDs and distinguishes waits. It watches local `COPILOT_HOME/session-state`
+(default `~/.copilot/session-state`) and live session locks, exits after all sessions
+finish and a short grace period, and does not start or end Amphetamine sessions.
+In **Amphetamine → Preferences → Triggers**, manually add an application trigger
+for **Amphetamine Helper.app** (start while the app runs; end when it closes).
+No timed AppleScript sessions or changes to your existing manual sessions are required.
+Restart the Copilot CLI/IDE host if necessary for newly installed hooks to load.
+A missing cup while Copilot is idle is expected.
 Starship is built by recursively merging `no-nerd-font`, `no-runtime-versions`,
 and local TOML in that order; local values win, `python.format` is removed, and
 Kubernetes is enabled. Atuin configuration is installed with mode `0644`.
 Python paths are pinned by Nix. Builds alone do not change
 that directory. Private keys and mutable Resilio state are not managed.
 
-The Hjem integration test expects 26 managed files on macOS and 21 on Linux,
+The Hjem integration test expects 29 managed files on macOS and 24 on Linux,
 including the new `thv-patched` command. Build/switch, repeated activation and
 unmanaged-conflict handling were tested in a disposable home on Apple Silicon
 macOS. Linux evaluation passed;

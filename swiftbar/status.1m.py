@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Unified system status with fold=true accordion sections."""
+"""Unified system status with child submenu items."""
 
 import json
 import os
@@ -106,18 +106,18 @@ def main():
     print("---")
 
     label = f"AWS ${aws['amount']:.2f} {aws['unit']}" if aws else "AWS unavailable | color=red"
-    print(f"{label} | fold=true sfimage=dollarsign.circle")
+    print(f"{label} | sfimage=dollarsign.circle")
     if aws:
         print(f"--Month to date: ${aws['amount']:.2f}")
 
     if tm is not None:
         if tm["running"]:
             pct = f" {tm['percent']}" if tm["percent"] else ""
-            print(f"Time Machine{pct} | fold=true sfimage=externaldrive.badge.timemachine color=#e5a50a")
+            print(f"Time Machine{pct} | sfimage=externaldrive.badge.timemachine color=#e5a50a")
         elif tm["latest"]:
-            print("Time Machine | fold=true sfimage=externaldrive.badge.checkmark color=#2da44e")
+            print("Time Machine | sfimage=externaldrive.badge.checkmark color=#2da44e")
         else:
-            print("Time Machine | fold=true sfimage=externaldrive.badge.exclamationmark color=#cf222e")
+            print("Time Machine | sfimage=externaldrive.badge.exclamationmark color=#cf222e")
         if tm["latest"]:
             print(f"--Last: {tm['latest']}")
         else:
@@ -133,13 +133,13 @@ def main():
         rlabel = f"Resilio {len(resilio)}"
         if paused:
             rlabel += f" ({paused} paused)"
-        print(f"{rlabel} | fold=true sfimage=arrow.triangle.2.circlepath")
+        print(f"{rlabel} | sfimage=arrow.triangle.2.circlepath")
         for f in resilio[:20]:
             s = "paused" if f["paused"] else "active"
             print(f"--{f['path'].replace('|', chr(0xa6))}: {s}")
         print("--Open Resilio Sync | bash=/usr/bin/open param1=-a param2='Resilio Sync' terminal=false")
     else:
-        print("Resilio unavailable | fold=true sfimage=arrow.triangle.2.circlepath color=red")
+        print("Resilio unavailable | sfimage=arrow.triangle.2.circlepath color=red")
 
     print("---")
     print("Refresh | refresh=true")
