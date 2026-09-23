@@ -40,15 +40,16 @@ and commit agreement plus the resulting `code --version`.
 Activate the Hjem configuration described below to install the policy files
 from [copilot](copilot). Hjem backs up conflicting unmanaged files; it does not
 change VS Code settings automatically. Runtime requires Bash,
-`jq`, a VS Code build supporting Agent Plugins, and `chatgpt/gpt-5.6-sol`
-registered in each channel you use. The hook finds `jq` on PATH or in standard
+`jq`, a VS Code build supporting Agent Plugins, and `chatgpt/gpt-6-sol` or
+`chatgpt/gpt-6-luna` registered in each channel you use. The hook finds `jq` on PATH or in standard
 Homebrew/system locations. Installation includes the global instruction,
 standalone hook, and an Agent Plugins 1.0 package at
 `~/.copilot/local-plugins/byok-subagent-policy`. Its `PreToolUse` hook requires
-this exact model for `task`, `Task`, `functions.task`, and VS Code's runtime
-`Agent` alias:
+one of these exact models for `task`, `Task`, `functions.task`, and VS Code's
+runtime `Agent` alias:
 
-`customendpoint/cliproxyapi customendpoint/chatgpt/gpt-5.6-sol`
+- `customendpoint/cliproxyapi customendpoint/chatgpt/gpt-6-sol`
+- `customendpoint/cliproxyapi customendpoint/chatgpt/gpt-6-luna`
 
 The parent chat model is unrestricted. **Register the plugin manually** in both
 Stable and Insiders user settings, merging this entry into any existing
