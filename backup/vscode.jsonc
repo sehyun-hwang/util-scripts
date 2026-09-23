@@ -1,0 +1,22 @@
+{
+  "biome.lsp.bin": "/Users/hwangsehyun/.nix-profile/bin/biome",
+  // cat /Users/hwangsehyun/.nix-profile/bin/eslint
+  "eslint.nodePath": "/nix/store/dqivywbra9qz317xy6c1as7p3f9yymr9-eslint-10.3.0/lib/node_modules",
+  "eslint.options": {
+    // "overrideConfigFile": "/Users/hwangsehyun/.local/share/pnpm/global/5/node_modules/nextlab-eslint/eslint.config.js"
+    "overrideConfigFile": "/Volumes/dev-internal/eslint-config-nextlab/eslint.config.js"
+  },
+  "eslint.runtime": "/Users/hwangsehyun/.nix-profile/bin/node",
+  "resmon.show.disk": false,
+  "ruff.path": [
+    "/opt/homebrew/bin/ruff",
+  ],
+  "sqlfluff.executablePath": "/Users/hwangsehyun/.nix-profile/bin/sqlfluff",
+  // "python.defaultInterpreterPath": "/Users/hwangsehyun/volatile/venv/python3.12/bin/python",
+  "stylelint.configFile": "/Users/hwangsehyun/.config/yarn/global/node_modules/nextlab-eslint/stylelint/.stylelintrc.json",
+  "stylelint.stylelintPath": "/nix/store/xld162a3mj4v3l1fvsyxh1gasw8nqdnk-stylelint-16.26.0/lib/node_modules/stylelint",
+  "oxc.path.oxfmt": "/Users/hwangsehyun/.nix-profile/bin/oxfmt",
+  "oxc.path.oxlint": "/Users/hwangsehyun/.nix-profile/bin/oxlint",
+  "speckit.aiProvider": "copilot",
+  "speckit.permissionMode": "auto-approve"
+}

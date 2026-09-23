@@ -1,6 +1,6 @@
 #!/bin/bash
 set -u -o pipefail
-readonly REQUIRED_MODEL='customendpoint/cliproxyapi customendpoint/chatgpt/gpt-5.6-sol'
+readonly ALLOWED_MODELS='["customendpoint/cliproxyapi customendpoint/chatgpt/gpt-6-sol","customendpoint/cliproxyapi customendpoint/chatgpt/gpt-6-luna"]'
 JQ="$(command -v jq)"
 if [[ -z "$JQ" ]]; then
     for candidate in /opt/homebrew/bin/jq /usr/local/bin/jq /usr/bin/jq; do
@@ -25,17 +25,17 @@ cleanup() {
 trap cleanup EXIT
 cat >"$input_file"
 
-classification="$($JQ -csr --arg model "$REQUIRED_MODEL" '
+classification="$($JQ -csr --argjson models "$ALLOWED_MODELS" '
     def call:
         (.name | if type == "string" then . else "invalid" end) as $name
         | (.args | if type == "string" then (try fromjson catch null) else . end) as $args
         | {name:$name,
            model:(if ($name == "task" or $name == "Task" or $name == "functions.task" or $name == "Agent") then
-                      (if ($args | type) == "object" and $args.model == $model then "match" else "mismatch" end)
+                      (if ($args | type) == "object" and any($models[]; . == $args.model) then "match" else "mismatch" end)
                   else "not-task" end),
            allowed:(if (.name | type) != "string" then false
                     elif ($name == "task" or $name == "Task" or $name == "functions.task" or $name == "Agent") then
-                        (($args | type) == "object" and $args.model == $model)
+                        (($args | type) == "object" and any($models[]; . == $args.model))
                     else true end)};
     (if length == 1 then .[0] else null end)
     | if type != "object" then ["invalid", "invalid", "invalid", "deny"]
@@ -61,12 +61,12 @@ else
     expected_decision='deny'
 fi
 
-if "$JQ" -cs --arg model "$REQUIRED_MODEL" '
+if "$JQ" -cs --argjson models "$ALLOWED_MODELS" '
     def call_allowed:
         if (.name | type) != "string" then false
         elif (.name == "task" or .name == "Task" or .name == "functions.task" or .name == "Agent") then
             (.args | if type == "string" then (try fromjson catch null) else . end)
-            | if type == "object" then .model == $model else false end
+            | if type == "object" then .model as $m | any($models[]; . == $m) else false end
         else true end;
     def result($decision; $reason):
         {permissionDecision:$decision,
@@ -84,7 +84,7 @@ if "$JQ" -cs --arg model "$REQUIRED_MODEL" '
        elif has("tool_name") then {name:.tool_name,args:.tool_input} | call_allowed
        else false end) as $allowed
     | if $allowed then result("allow"; null)
-      else result("deny"; "Subagent requires explicit model " + $model) end
+      else result("deny"; "Subagent requires one of: " + ($models | join(", "))) end
 ' <"$input_file" >"$output_file" 2>/dev/null; then
     jq_status=0
 else

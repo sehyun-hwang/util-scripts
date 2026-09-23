@@ -1,0 +1,135 @@
+Include ~/.orbstack/ssh/config
+
+# Devsy Start laplace-airflow-dags.devsy
+Host laplace-airflow-dags.devsy
+  ForwardAgent yes
+  LogLevel error
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+  HostKeyAlgorithms rsa-sha2-256,rsa-sha2-512,ssh-rsa
+  ProxyCommand "/Users/hwangsehyun/.local/bin/devsy" workspace ssh --stdio --context default --user vscode laplace-airflow-dags
+  User vscode
+# Devsy End laplace-airflow-dags.devsy
+# Devsy Start laplace-airflow-dags-opencode-web.devsy
+Host laplace-airflow-dags-opencode-web.devsy
+  ForwardAgent yes
+  LogLevel error
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+  HostKeyAlgorithms rsa-sha2-256,rsa-sha2-512,ssh-rsa
+  ProxyCommand "/Volumes/dev-internal/devsy/dist/devsy-dev_darwin_arm64_v8.0/devsy-darwin-arm64" workspace ssh --stdio --context default --user vscode laplace-airflow-dags-opencode-web
+  User vscode
+# Devsy End laplace-airflow-dags-opencode-web.devsy
+# Devsy Start python.devsy
+Host python.devsy
+  ForwardAgent yes
+  LogLevel error
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+  HostKeyAlgorithms rsa-sha2-256,rsa-sha2-512,ssh-rsa
+  ProxyCommand "/Applications/Devsy.app/Contents/Resources/bin/devsy" workspace ssh --stdio --context default --user vscode python
+  User vscode
+# Devsy End python.devsy
+# Devsy Start laplace-gitops.devsy
+Host laplace-gitops.devsy
+  ForwardAgent yes
+  LogLevel error
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+  HostKeyAlgorithms rsa-sha2-256,rsa-sha2-512,ssh-rsa
+  ProxyCommand "/Applications/Devsy.app/Contents/Resources/bin/devsy" workspace ssh --stdio --context default --user node laplace-gitops
+  User node
+# Devsy End laplace-gitops.devsy
+# DevPod Start vscode-remote-try-python-docker.devpod
+Host vscode-remote-try-python-docker.devpod
+  ForwardAgent yes
+  LogLevel error
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+  HostKeyAlgorithms rsa-sha2-256,rsa-sha2-512,ssh-rsa
+  ProxyCommand "/Volumes/dev-internal/devpod/desktop/src-tauri/target/debug/bundle/macos/DevPod.app/Contents/MacOS/devpod" ssh --stdio --context default --user vscode vscode-remote-try-python-docker
+  User vscode
+# DevPod End vscode-remote-try-python-docker.devpod
+# DevPod Start devpod-example-go.devpod
+Host devpod-example-go.devpod
+  ForwardAgent yes
+  LogLevel error
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+  HostKeyAlgorithms rsa-sha2-256,rsa-sha2-512,ssh-rsa
+  ProxyCommand "/Applications/DevPod.app/Contents/MacOS/devpod" ssh --stdio --context default --user vscode devpod-example-go
+  User vscode
+# DevPod End devpod-example-go.devpod
+# Devsy Start go.devsy
+Host go.devsy
+  ForwardAgent yes
+  LogLevel error
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+  HostKeyAlgorithms rsa-sha2-256,rsa-sha2-512,ssh-rsa
+  ProxyCommand "/Applications/Devsy.app/Contents/Resources/bin/devsy" workspace ssh --stdio --context default --user vscode go
+  User vscode
+# Devsy End go.devsy
+# DevPod Start laplace-airflow-dags.devpod
+Host laplace-airflow-dags.devpod
+  ForwardAgent yes
+  LogLevel error
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+  HostKeyAlgorithms rsa-sha2-256,rsa-sha2-512,ssh-rsa
+  ProxyCommand "/Volumes/dev-internal/devpod/desktop/src-tauri/target/debug/bundle/macos/DevPod.app/Contents/MacOS/devpod" ssh --stdio --context default --user vscode laplace-airflow-dags
+  User vscode
+# DevPod End laplace-airflow-dags.devpod
+# DevPod Start vscode-remote-try-python.devpod
+Host vscode-remote-try-python.devpod
+  ForwardAgent yes
+  LogLevel error
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+  HostKeyAlgorithms rsa-sha2-256,rsa-sha2-512,ssh-rsa
+  ProxyCommand "/Volumes/dev-internal/devpod/desktop/src-tauri/target/debug/bundle/macos/DevPod.app/Contents/MacOS/devpod" ssh --stdio --context default --user vscode vscode-remote-try-python
+  User vscode
+# DevPod End vscode-remote-try-python.devpod
+# DevPod Start https---github-com-laplacetec-laplace-projen-pro.devpod
+Host https---github-com-laplacetec-laplace-projen-pro.devpod
+  ForwardAgent yes
+  LogLevel error
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+  HostKeyAlgorithms rsa-sha2-256,rsa-sha2-512,ssh-rsa
+  ProxyCommand "/Applications/DevPod.app/Contents/MacOS/devpod" ssh --stdio --context default --user vscode https---github-com-laplacetec-laplace-projen-pro
+  User vscode
+# DevPod End https---github-com-laplacetec-laplace-projen-pro.devpod
+# DevPod Start devpod-example-go-multipass.devpod
+Host devpod-example-go-multipass.devpod
+  ForwardAgent yes
+  LogLevel error
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+  HostKeyAlgorithms rsa-sha2-256,rsa-sha2-512,ssh-rsa
+  ProxyCommand "/Applications/DevPod.app/Contents/MacOS/devpod-cli" ssh --stdio --context default --user vscode devpod-example-go-multipass
+  User vscode
+# DevPod End devpod-example-go-multipass.devpod
+# DevPod Start https---github-com-laplacetec-laplace-gitops.devpod
+Host https---github-com-laplacetec-laplace-gitops.devpod
+  ForwardAgent yes
+  LogLevel error
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+  HostKeyAlgorithms rsa-sha2-256,rsa-sha2-512,ssh-rsa
+  ProxyCommand "/opt/homebrew/bin/devpod" ssh --stdio --context default --user node https---github-com-laplacetec-laplace-gitops
+  User node
+# DevPod End https---github-com-laplacetec-laplace-gitops.devpod
+# DevPod Start simple.devpod
+Host simple.devpod
+  ForwardAgent yes
+  LogLevel error
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+  HostKeyAlgorithms rsa-sha2-256,rsa-sha2-512,ssh-rsa
+  ProxyCommand "/opt/homebrew/bin/devpod" ssh --stdio --context default --user vscode simple
+  User vscode
+# DevPod End simple.devpod
+Host parallels
+    HostName centos-linux.shared
+    User hwangsehyun

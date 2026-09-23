@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "hooks": {
+    "PreToolUse": [
+      {
+        "type": "command",
+        "bash": "~/.copilot/hooks/atuin-wrapper.sh",
+        "matcher": "Bash",
+        "timeoutSec": 5
+      }
+    ],
+    "PostToolUse": [
+      {
+        "type": "command",
+        "bash": "~/.copilot/hooks/atuin-wrapper.sh",
+        "matcher": "Bash",
+        "timeoutSec": 5
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "type": "command",
+        "bash": "~/.copilot/hooks/atuin-wrapper.sh",
+        "matcher": "Bash",
+        "timeoutSec": 5
+      }
+    ]
+  }
+}
