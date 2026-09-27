@@ -39,8 +39,8 @@ hjem=$(nix build --no-link --print-out-paths "${flake}#hjem")/bin/hjem
 "$hjem" standalone build --config "$conf" --state-dir "$state"
 "$hjem" standalone switch --config "$conf" --state-dir "$state"
 
-expected=24
-if [[ $system == *-darwin ]]; then expected=29; fi
+expected=34
+if [[ $system == *-darwin ]]; then expected=39; fi
 actual=$(find "$home" -type f | wc -l | tr -d ' ')
 [[ $actual == "$expected" ]] || { echo "expected $expected managed files, got $actual" >&2; exit 1; }
 [[ ! -e "$home/.ssh/id_ed25519" ]]

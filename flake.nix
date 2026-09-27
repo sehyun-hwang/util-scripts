@@ -38,6 +38,35 @@
             config.allowUnfree = false;
           };
 
+          npmGlobalManifest = builtins.fromJSON (builtins.readFile ./npm-global/package.json);
+          npmGlobalLock = builtins.fromJSON (builtins.readFile ./npm-global/package-lock.json);
+          npmGlobalCommands = lib.concatMap (name:
+            let bin = npmGlobalLock.packages."node_modules/${name}".bin or {};
+            in if builtins.isString bin then [ (lib.last (lib.splitString "/" name)) ]
+            else builtins.attrNames bin
+          ) (builtins.attrNames npmGlobalManifest.dependencies);
+          npmGlobal = goPkgs.buildNpmPackage {
+            pname = "npm-global";
+            version = npmGlobalManifest.version;
+            src = ./npm-global;
+            npmDepsHash = "sha256-ALdUMqPOruQNQ4jwLSPCEazW1UFfVSo1oi/L1ei+ALc=";
+            npmDepsFetcherVersion = 2;
+            nodejs = goPkgs.nodejs_24;
+            dontNpmBuild = true;
+            dontNpmPrune = true;
+            nativeBuildInputs = [ goPkgs.makeWrapper ];
+            installPhase = ''
+              runHook preInstall
+              mkdir -p "$out/lib" "$out/bin"
+              cp -r node_modules package.json package-lock.json "$out/lib/"
+              for file in "$out"/lib/node_modules/.bin/*; do
+                makeWrapper "$file" "$out/bin/$(basename "$file")" \
+                  --prefix PATH : ${lib.makeBinPath [ goPkgs.nodejs_24 ]}
+              done
+              runHook postInstall
+            '';
+          };
+
           restish230 = goPkgs.buildGoModule {
             pname = "restish";
             version = "2.3.0";
@@ -334,7 +363,10 @@
               --set-default RESILIO_CLIENT '${resilio}/bin/resilio-restish'
           '';
 
-          homeSources = {
+          homeSources = lib.genAttrs (map (name: ".local/bin/${name}") npmGlobalCommands) (path: {
+            source = "${npmGlobal}/bin/${builtins.baseNameOf path}";
+            permissions = "0755";
+          }) // {
             ".bash_profile" = { source = ./shell/bash_profile.sh; permissions = "0644"; };
             ".config/fish/conf.d/util-scripts.fish" = { source = ./shell/config.fish; permissions = "0644"; };
             ".config/git/ignore" = { source = ./shell/gitignore; permissions = "0644"; };
@@ -406,6 +438,7 @@
 
         in {
           packages = {
+            npm-global = npmGlobal;
             backup-git-wip = backupGitWip;
             backup-workflow = backupWorkflow;
             remoteit-ssh = remoteitSsh;
