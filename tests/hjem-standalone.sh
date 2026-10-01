@@ -39,8 +39,8 @@ hjem=$(nix build --no-link --print-out-paths "${flake}#hjem")/bin/hjem
 "$hjem" standalone build --config "$conf" --state-dir "$state"
 "$hjem" standalone switch --config "$conf" --state-dir "$state"
 
-expected=24
-if [[ $system == *-darwin ]]; then expected=29; fi
+expected=34
+if [[ $system == *-darwin ]]; then expected=39; fi
 actual=$(find "$home" -type f | wc -l | tr -d ' ')
 [[ $actual == "$expected" ]] || { echo "expected $expected managed files, got $actual" >&2; exit 1; }
 [[ ! -e "$home/.ssh/id_ed25519" ]]
@@ -67,7 +67,7 @@ fi
 ! grep -Eq '(^|[[:space:]])eval([[:space:]]|$)' "$home/.local/bin/remoteit-ssh"
 [[ $("$home/.local/bin/restish" --version) == "restish version 2.3.0" ]]
 "$home/.local/bin/restish" --help >/dev/null
-[[ $("$home/.local/bin/thv-patched" version 2>&1) == *"ToolHive v0.46.0-patched"* ]]
+[[ $("$home/.local/bin/thv-patched" version 2>&1) == *"ToolHive v0.51.4-patched"* ]]
 "$home/.local/bin/thv-patched" --help >/dev/null
 [[ $(TOOLHIVE_SKIP_DESKTOP_CHECK=0 "$home/.local/bin/thv-patched" version 2>&1) == *"CLI conflict detected"* ]]
 "$home/.local/bin/resilio-restish" --help

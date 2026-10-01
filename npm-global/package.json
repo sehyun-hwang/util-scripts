@@ -1,0 +1,18 @@
+{
+  "name": "global-bin",
+  "version": "1.0.0",
+  "dependencies": {
+    "artillery": "2.0.32",
+    "diffchecker": "^0.3.2",
+    "nx": "^22.7.5",
+    "projen": "^0.99.70",
+    "serve": "^14.2.6",
+    "showdown": "^2.1.0",
+    "v8r": "^6.1.0",
+    "vite": "^8.0.14",
+    "wscat": "^6.1.0"
+  },
+  "overrides": {
+    "artillery-engine-playwright": "npm:dry-uninstall"
+  }
+}

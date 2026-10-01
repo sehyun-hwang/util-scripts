@@ -34,17 +34,50 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1767313136,
-        "narHash": "sha256-16KkgfdYqjaeRGBaYsNrhPRRENs0qzkQVUooNHtoy2w=",
+        "lastModified": 1790533781,
+        "narHash": "sha256-F+b8u43BVF5DlM0pz7JQSbtbwKy5PrHIT5zQUekXsD0=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "ac62194c3917d5f474c1a844b6fd6da2db95077d",
+        "rev": "cf5e76507c6e23b59f7e0ffcc7baa2a39ddd8442",
         "type": "github"
       },
       "original": {
         "owner": "NixOS",
-        "ref": "nixos-25.05",
+        "ref": "nixos-26.05",
         "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "remoteit-ssh-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1681744204,
+        "narHash": "sha256-Q5Eb4M3TmqMtNqg7YVqOxOdrPXQmZLq6HfUN/Bl3HFA=",
+        "owner": "conor-f",
+        "repo": "remoteit-ssh",
+        "rev": "5a9e82b018cdc1957c71f3b88e2820bf718d597a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "conor-f",
+        "repo": "remoteit-ssh",
+        "type": "github"
+      }
+    },
+    "restish-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1782793463,
+        "narHash": "sha256-tI4o+zkKNnFrqWFEHsNt2+03Luth9KHH+x7P+WwaGNI=",
+        "owner": "rest-sh",
+        "repo": "restish",
+        "rev": "6305246a75121a7373563577e50e9bf522baca6b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "rest-sh",
+        "ref": "v2.3.0",
+        "repo": "restish",
         "type": "github"
       }
     },
@@ -52,7 +85,27 @@
       "inputs": {
         "hjem": "hjem",
         "nixpkgs": "nixpkgs_2",
+        "remoteit-ssh-src": "remoteit-ssh-src",
+        "restish-src": "restish-src",
+        "toolhive-src": "toolhive-src",
         "vscode-nixpkgs": "vscode-nixpkgs"
+      }
+    },
+    "toolhive-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790526037,
+        "narHash": "sha256-4JqDZI4/NoizCYHa9A1kJMG+enmGcUTiPPSrWpJb8c4=",
+        "owner": "stacklok",
+        "repo": "toolhive",
+        "rev": "61aaf42df6a1898bc1b4e5c738393b08ef129817",
+        "type": "github"
+      },
+      "original": {
+        "owner": "stacklok",
+        "ref": "v0.51.4",
+        "repo": "toolhive",
+        "type": "github"
       }
     },
     "vscode-nixpkgs": {

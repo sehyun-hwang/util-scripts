@@ -2,12 +2,15 @@
   description = "Standalone packages and Hjem configuration for util-scripts";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
+    restish-src = { url = "github:rest-sh/restish/v2.3.0"; flake = false; };
+    toolhive-src = { url = "github:stacklok/toolhive/v0.51.4"; flake = false; };
+    remoteit-ssh-src = { url = "github:conor-f/remoteit-ssh"; flake = false; };
     vscode-nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     hjem.url = "github:feel-co/hjem/e5e30b4320a8cbcd6cdfc65f044763669a8f0363";
   };
 
-  outputs = { self, nixpkgs, vscode-nixpkgs, hjem }:
+  outputs = { self, nixpkgs, vscode-nixpkgs, hjem, restish-src, toolhive-src, remoteit-ssh-src }:
     let
       systems = [ "aarch64-darwin" "aarch64-linux" "x86_64-linux" ];
       importPkgs = system: import nixpkgs {
@@ -38,15 +41,39 @@
             config.allowUnfree = false;
           };
 
+          npmGlobalManifest = builtins.fromJSON (builtins.readFile ./npm-global/package.json);
+          npmGlobalLock = builtins.fromJSON (builtins.readFile ./npm-global/package-lock.json);
+          npmGlobalCommands = lib.concatMap (name:
+            let bin = npmGlobalLock.packages."node_modules/${name}".bin or {};
+            in if builtins.isString bin then [ (lib.last (lib.splitString "/" name)) ]
+            else builtins.attrNames bin
+          ) (builtins.attrNames npmGlobalManifest.dependencies);
+          npmGlobal = goPkgs.buildNpmPackage {
+            pname = "npm-global";
+            version = npmGlobalManifest.version;
+            src = ./npm-global;
+            npmDepsHash = "sha256-ALdUMqPOruQNQ4jwLSPCEazW1UFfVSo1oi/L1ei+ALc=";
+            npmDepsFetcherVersion = 2;
+            nodejs = goPkgs.nodejs_24;
+            dontNpmBuild = true;
+            dontNpmPrune = true;
+            nativeBuildInputs = [ goPkgs.makeWrapper ];
+            installPhase = ''
+              runHook preInstall
+              mkdir -p "$out/lib" "$out/bin"
+              cp -r node_modules package.json package-lock.json "$out/lib/"
+              for file in "$out"/lib/node_modules/.bin/*; do
+                makeWrapper "$file" "$out/bin/$(basename "$file")" \
+                  --prefix PATH : ${lib.makeBinPath [ goPkgs.nodejs_24 ]}
+              done
+              runHook postInstall
+            '';
+          };
+
           restish230 = goPkgs.buildGoModule {
             pname = "restish";
             version = "2.3.0";
-            src = pkgs.fetchFromGitHub {
-              owner = "rest-sh";
-              repo = "restish";
-              rev = "6305246a75121a7373563577e50e9bf522baca6b";
-              hash = "sha256-tI4o+zkKNnFrqWFEHsNt2+03Luth9KHH+x7P+WwaGNI=";
-            };
+            src = restish-src;
             vendorHash = "sha256-Y0GwgrkD09WAlmyI6Oe3Kw6L62E7QRTCIThZGXbbn74=";
             subPackages = [ "cmd/restish" ];
             ldflags = [
@@ -62,23 +89,18 @@
             };
           };
 
-          toolhivePatched = goPkgs.buildGoModule {
+          toolhivePatched = goPkgs.buildGo127Module {
             pname = "thv-patched";
-            version = "0.46.0";
-            src = pkgs.fetchFromGitHub {
-              owner = "stacklok";
-              repo = "toolhive";
-              rev = "c6c425a924fac51c86cbade15d0e720e29a600ab";
-              hash = "sha256-U5WJmnVEYeE0DHNIln+N9OC6dLJzwaeF8OunhgsdmiM=";
-            };
+            version = "0.51.4";
+            src = toolhive-src;
             patches = [ ./patches/toolhive-explicit-oauth.patch ];
-            vendorHash = "sha256-sg2W+cWmaCguL/pCH8+RrROJUDp23qHn24HeARvXhyU=";
+            vendorHash = "sha256-EsjBo+vhCmHTKuboe4ATSBAqgOI1vFLoI6W8DI+OHZI=";
             subPackages = [ "cmd/thv" ];
             ldflags = [
               "-s"
               "-w"
-              "-X github.com/stacklok/toolhive/pkg/versions.Version=v0.46.0-patched"
-              "-X github.com/stacklok/toolhive/pkg/versions.Commit=c6c425a924fac51c86cbade15d0e720e29a600ab"
+              "-X github.com/stacklok/toolhive/pkg/versions.Version=v0.51.4-patched"
+              "-X github.com/stacklok/toolhive/pkg/versions.Commit=${toolhive-src.rev}"
               "-X github.com/stacklok/toolhive/pkg/versions.BuildType=development"
             ];
             postInstall = ''
@@ -120,7 +142,8 @@
               install -Dm755 ${./backup-workflow/backup-workflow.sh} "$out/bin/backup-workflow.sh"
               install -Dm644 ${./backup-workflow/backup.mk} "$out/share/util-scripts/backup.mk"
               substituteInPlace "$out/bin/backup-workflow.sh" \
-                --replace-fail 'wip=$script_dir/backup-git-wip.sh' 'wip=${backupGitWip}/bin/backup-git-wip.sh'
+                --replace-fail 'wip=$script_dir/backup-git-wip.sh' 'wip=${backupGitWip}/bin/backup-git-wip.sh' \
+                --replace-fail 'inventory_makefile=$script_dir/backup.mk' "inventory_makefile=$out/share/util-scripts/backup.mk"
               patchShebangs "$out/bin/backup-workflow.sh"
               wrapProgram "$out/bin/backup-workflow.sh" --prefix PATH : ${runtimePath}
             '';
@@ -143,12 +166,7 @@
             pname = "remoteit-ssh";
             version = "0.3.1";
             format = "setuptools";
-            src = pkgs.fetchFromGitHub {
-              owner = "conor-f";
-              repo = "remoteit-ssh";
-              rev = "5a9e82b018cdc1957c71f3b88e2820bf718d597a";
-              hash = "sha256-Q5Eb4M3TmqMtNqg7YVqOxOdrPXQmZLq6HfUN/Bl3HFA=";
-            };
+            src = remoteit-ssh-src;
             propagatedBuildInputs = [
               pkgs.python3Packages.requests
               requestsHttpSignature010
@@ -328,13 +346,16 @@
           statusPlugin = pkgs.runCommand "status.1m.py" {
             nativeBuildInputs = [ pkgs.makeWrapper ];
           } ''
-            install -Dm755 ${./swiftbar/status.1m.py} "$out"
-            wrapProgram "$out" \
+            makeWrapper ${pkgs.python3}/bin/python3 "$out" \
+              --add-flags ${./swiftbar/status.1m.py} \
               --set-default AWS_BIN '${pkgs.awscli2}/bin/aws' \
               --set-default RESILIO_CLIENT '${resilio}/bin/resilio-restish'
           '';
 
-          homeSources = {
+          homeSources = lib.genAttrs (map (name: ".local/bin/${name}") npmGlobalCommands) (path: {
+            source = "${npmGlobal}/bin/${builtins.baseNameOf path}";
+            permissions = "0755";
+          }) // {
             ".bash_profile" = { source = ./shell/bash_profile.sh; permissions = "0644"; };
             ".config/fish/conf.d/util-scripts.fish" = { source = ./shell/config.fish; permissions = "0644"; };
             ".config/git/ignore" = { source = ./shell/gitignore; permissions = "0644"; };
@@ -406,6 +427,7 @@
 
         in {
           packages = {
+            npm-global = npmGlobal;
             backup-git-wip = backupGitWip;
             backup-workflow = backupWorkflow;
             remoteit-ssh = remoteitSsh;
