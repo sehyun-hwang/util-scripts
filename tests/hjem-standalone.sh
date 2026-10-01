@@ -67,7 +67,7 @@ fi
 ! grep -Eq '(^|[[:space:]])eval([[:space:]]|$)' "$home/.local/bin/remoteit-ssh"
 [[ $("$home/.local/bin/restish" --version) == "restish version 2.3.0" ]]
 "$home/.local/bin/restish" --help >/dev/null
-[[ $("$home/.local/bin/thv-patched" version 2>&1) == *"ToolHive v0.46.0-patched"* ]]
+[[ $("$home/.local/bin/thv-patched" version 2>&1) == *"ToolHive v0.51.4-patched"* ]]
 "$home/.local/bin/thv-patched" --help >/dev/null
 [[ $(TOOLHIVE_SKIP_DESKTOP_CHECK=0 "$home/.local/bin/thv-patched" version 2>&1) == *"CLI conflict detected"* ]]
 "$home/.local/bin/resilio-restish" --help

@@ -1,6 +1,6 @@
 #!/bin/bash
 set -u -o pipefail
-readonly ALLOWED_MODELS='["customendpoint/cliproxyapi customendpoint/chatgpt/gpt-6-sol","customendpoint/cliproxyapi customendpoint/chatgpt/gpt-6-luna"]'
+readonly ALLOWED_MODELS='["customendpoint/cliproxyapi customendpoint/chatgpt/gpt-6.1-sol","customendpoint/cliproxyapi customendpoint/chatgpt/gpt-6-luna"]'
 JQ="$(command -v jq)"
 if [[ -z "$JQ" ]]; then
     for candidate in /opt/homebrew/bin/jq /usr/local/bin/jq /usr/bin/jq; do

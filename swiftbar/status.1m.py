@@ -3,7 +3,6 @@
 
 import json
 import os
-import re
 import subprocess
 import time
 from datetime import date
@@ -59,29 +58,18 @@ def aws_section():
 
 def tm_section():
     status = run(["/usr/bin/tmutil", "status"], timeout=5)
-    dest = run(["/usr/bin/tmutil", "destinationinfo"], timeout=5)
-    if not dest or "Mount Point" not in dest.stdout:
+    if status is None or not status.stdout.strip():
         return None
-    running = status and ("Running = 1" in status.stdout or "Running = true" in status.stdout)
-    latest = ""
-    r = run(["/usr/bin/tmutil", "latestbackup"], timeout=5)
-    if r and r.returncode == 0 and r.stdout.strip():
-        latest = r.stdout.strip().split("/")[-1]
-    if not latest:
-        r = run(["/usr/bin/defaults", "read", "/Library/Preferences/com.apple.TimeMachine"], timeout=5)
-        if r and r.stdout:
-            dates = re.findall(r'"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} [+-]\d{4})"', r.stdout)
-            if dates:
-                latest = sorted(dates)[-1]
-    percent = ""
-    if running and status:
-        m = re.search(r'Percent = "?([0-9.]+)', status.stdout)
-        if m:
-            percent = f"{float(m.group(1)) * 100:.0f}%"
-    return {"running": running, "latest": latest, "percent": percent}
+    return status.stdout
 
 
-@cached("resilio", 600)
+def tm_latest_backup():
+    latest = run(["/usr/bin/tmutil", "latestbackup"], timeout=5)
+    if latest is None or latest.returncode or not latest.stdout.strip():
+        return None
+    return latest.stdout.strip()
+
+
 def resilio_section():
     r = run([RESILIO_CLIENT, "status"], timeout=8)
     if not r or r.returncode:
@@ -97,6 +85,7 @@ def main():
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     aws = aws_section()
     tm = tm_section()
+    latest_backup = tm_latest_backup()
     resilio = resilio_section()
 
     if aws:
@@ -111,22 +100,17 @@ def main():
         print(f"--Month to date: ${aws['amount']:.2f}")
 
     if tm is not None:
-        if tm["running"]:
-            pct = f" {tm['percent']}" if tm["percent"] else ""
-            print(f"Time Machine{pct} | sfimage=externaldrive.badge.timemachine color=#e5a50a")
-        elif tm["latest"]:
-            print("Time Machine | sfimage=externaldrive.badge.checkmark color=#2da44e")
-        else:
-            print("Time Machine | sfimage=externaldrive.badge.exclamationmark color=#cf222e")
-        if tm["latest"]:
-            print(f"--Last: {tm['latest']}")
-        else:
-            print("--No backups found | color=#cf222e")
-        if tm["running"]:
-            print("--Stop Backup | bash=/usr/bin/tmutil param1=stopbackup terminal=false refresh=true")
-        else:
-            print("--Backup Now | bash=/usr/bin/tmutil param1=startbackup terminal=false refresh=true")
-        print("--Settings | bash=/usr/bin/open param1=x-apple.systempreferences:com.apple.Time-Machine-Settings.extension terminal=false")
+        print("Time Machine | sfimage=externaldrive.badge.timemachine")
+        for line in tm.splitlines():
+            print(f"--{line.replace('|', chr(0xa6))} | trim=false")
+    else:
+        print("Time Machine unavailable | sfimage=externaldrive.badge.timemachine color=red")
+    if latest_backup:
+        for index, line in enumerate(latest_backup.splitlines()):
+            label = "Last backup: " if index == 0 else ""
+            print(f"--{label}{line.replace('|', chr(0xa6))} | trim=false")
+    else:
+        print("--Latest backup unavailable")
 
     if resilio is not None:
         paused = sum(1 for f in resilio if f["paused"])

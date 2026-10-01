@@ -11,7 +11,7 @@ whose roots are at most two levels below the scan root.
 
 Options:
   --dry-run          Show the files that would be copied without changing anything.
-  --home PATH        Scan PATH instead of the current user's home directory.
+  --git PATH         Scan PATH instead of the current user's home directory.
   --remote NAME      Use remote NAME for repository identity (default: origin).
   -h, --help         Show this help.
 
@@ -181,8 +181,8 @@ while (($# > 0)); do
       dry_run=true
       shift
       ;;
-    --home)
-      (($# >= 2)) || die '--home requires a path'
+    --git)
+      (($# >= 2)) || die '--git requires a path'
       scan_home=$2
       shift 2
       ;;
@@ -255,22 +255,17 @@ while IFS= read -r -d '' git_marker; do
 
   selected_remote=$remote_name
   if ! remote_url=$(git -C "$root" remote get-url -- "$selected_remote" 2>/dev/null); then
+    remote_url=''
     mapfile -t configured_remotes < <(git -C "$root" remote)
     if ((${#configured_remotes[@]} == 1)); then
       selected_remote=${configured_remotes[0]}
-      remote_url=$(git -C "$root" remote get-url -- "$selected_remote" 2>/dev/null) || {
-        warn "skipping $(printf '%q' "$root"): cannot read its only remote"
-        continue
-      }
-    else
-      warn "skipping $(printf '%q' "$root"): remote '$remote_name' is unavailable or ambiguous"
-      continue
+      remote_url=$(git -C "$root" remote get-url -- "$selected_remote" 2>/dev/null) || remote_url=''
     fi
   fi
 
-  if ! remote_identity=$(normalize_remote_url "$remote_url"); then
-    warn "skipping $(printf '%q' "$root"): remote '$selected_remote' has an unsupported URL"
-    continue
+  if [[ -z $remote_url ]] || ! remote_identity=$(normalize_remote_url "$remote_url"); then
+    remote_identity="_local/$(encode_segment "${root##*/}")"
+    warn "using $remote_identity for $(printf '%q' "$root"): remote '$remote_name' is unavailable, ambiguous, or unsupported"
   fi
 
   if branch_name=$(git -C "$root" symbolic-ref --quiet --short HEAD 2>/dev/null); then
