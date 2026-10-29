@@ -1,3 +1,11 @@
+if status is-interactive; and test -x /Applications/Figxit.app/Contents/MacOS/figxit-engine
+    '/Applications/Figxit.app/Contents/MacOS/figxit-engine' init fish | source
+    # Leave clipboard bindings to fish instead of appending Figxit's input hook.
+    if functions -q _figxit_bind
+        functions _figxit_bind | string replace -- '(^| )execute( |$)' '(^| )(execute|fish_clipboard_paste)( |$)' | source
+    end
+end
+
 export AWS_SDK_LOAD_CONFIG=1
 export COREPACK_ENABLE_AUTO_PIN=0
 export PODMAN_IGNORE_CGROUPSV1_WARNING=1

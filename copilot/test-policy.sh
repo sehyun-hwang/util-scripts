@@ -9,17 +9,19 @@ assert_decision() {
     [[ "$actual" == "$expected:$expected" ]] || { printf 'Hook self-test expected %s, got %s\n' "$expected" "$actual" >&2; exit 1; }
 }
 assert_decision allow '{"toolName":"task","toolArgs":{"model":"customendpoint/cliproxyapi customendpoint/chatgpt/gpt-6.1-sol"}}'
-assert_decision allow '{"toolName":"task","toolArgs":{"model":"customendpoint/cliproxyapi customendpoint/chatgpt/gpt-6-luna"}}'
+assert_decision allow '{"toolName":"task","toolArgs":{"model":"customendpoint/cliproxyapi customendpoint/chatgpt/gpt-6.1-terra"}}'
 assert_decision deny '{"toolName":"Task","toolArgs":{"model":"wrong-model"}}'
 assert_decision allow '{"tool_name":"Agent","tool_input":{"model":"customendpoint/cliproxyapi customendpoint/chatgpt/gpt-6.1-sol"}}'
-assert_decision allow '{"tool_name":"Agent","tool_input":{"model":"customendpoint/cliproxyapi customendpoint/chatgpt/gpt-6-luna"}}'
+assert_decision allow '{"tool_name":"Agent","tool_input":{"model":"customendpoint/cliproxyapi customendpoint/chatgpt/gpt-6.1-terra"}}'
 assert_decision deny '{"tool_name":"Agent","tool_input":{"model":"wrong-model"}}'
 assert_decision deny '{"tool_name":"functions.task","tool_input":{}}'
 assert_decision allow '{"tool_name":"grep","tool_input":{}}'
 assert_decision allow '{"toolCalls":[{"name":"grep","args":{}},{"name":"task","args":{"model":"customendpoint/cliproxyapi customendpoint/chatgpt/gpt-6.1-sol"}}]}'
-assert_decision allow '{"toolCalls":[{"name":"grep","args":{}},{"name":"task","args":{"model":"customendpoint/cliproxyapi customendpoint/chatgpt/gpt-6-luna"}}]}'
+assert_decision allow '{"toolCalls":[{"name":"grep","args":{}},{"name":"task","args":{"model":"customendpoint/cliproxyapi customendpoint/chatgpt/gpt-6.1-terra"}}]}'
 assert_decision deny '{"toolCalls":[{"name":"grep","args":{}},{"name":"task","args":{"model":"wrong-model"}}]}'
 assert_decision deny '{"toolCalls":[]}'
 assert_decision deny 'not-json'
 
-printf 'All 13 hook tests passed.\n'
+assert_decision deny '{"toolName":"task","toolArgs":{"model":"customendpoint/cliproxyapi customendpoint/chatgpt/gpt-6-luna"}}'
+
+printf 'All 14 hook tests passed.\n'

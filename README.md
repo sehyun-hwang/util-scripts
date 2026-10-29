@@ -91,3 +91,16 @@ skopeo --insecure-policy copy \
   "oci:$HOME/Library/Application Support/ToolHive/skills:committing-with-commitlint"
 thv-patched skill install committing-with-commitlint
 ```
+
+### Copilot Atuin and Figxit compatibility
+
+The Copilot Atuin hook discovers clients on PATH and in standard Homebrew/Nix
+locations and selects a version matching a healthy running daemon. Set
+`ATUIN_BIN` to override discovery. Failures preserve their exit status and emit
+BEL on stderr; audible playback depends on the host. Run
+`sh copilot/test-atuin.sh` and `bash copilot/test-policy.sh` for regression tests.
+
+Fish initializes the externally installed Figxit app only in interactive shells
+when its engine exists. Its binding installer leaves `fish_clipboard_paste`
+unwrapped to avoid the Figxit 0.2.5 typing-then-paste loop without modifying the
+signed app. Legacy Kiro startup initialization is removed.
