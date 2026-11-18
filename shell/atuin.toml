@@ -7,3 +7,12 @@ enabled = true
 
 [ai]
 enabled = true
+
+[pty_proxy]
+enabled = true
+
+[output]
+enabled = true
+
+[threads]
+capture = true

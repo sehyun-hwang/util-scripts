@@ -6,10 +6,12 @@
 	editor = vim
 
 [credential "https://gist.github.com"]
-	helper = "%s auth git-credential"
+	helper =
+	helper = "!%s auth git-credential"
 
 [credential "https://github.com"]
-	helper = "%s auth git-credential"
+	helper =
+	helper = "!%s auth git-credential"
 
 [filter "lfs"]
 	clean = "git-lfs clean -- %f"
