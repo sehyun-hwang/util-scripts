@@ -5,7 +5,12 @@
 Nixpkgs tracks `nixos-26.05`. Restish 2.3.0, ToolHive 0.51.4 (with the
 explicit-OAuth patch), and remoteit-ssh 0.3.1 use non-flake source inputs pinned
 in `flake.lock`. Restish and remoteit-ssh were already at their latest upstream
-release/revision when checked. VS Code retains its separate source pin.
+release/revision when checked. The source-built VS Code CLI follows the commit
+and product metadata in the separately pinned `vscode-nixpkgs` input. Its source
+is fetched by immutable commit, and dependencies come from that source's
+`cli/Cargo.lock` (registry checksums and pinned Git revisions). Updating with
+`nix flake update` requires no manual VS Code source or Cargo hash updates.
+The first evaluation may fetch source trees; no prebuilt CLI is substituted.
 
 The SwiftBar Time Machine section queries `tmutil status` and `tmutil latestbackup`
 live, without cached state or preference-file lookups. Resilio status is also
@@ -93,6 +98,11 @@ thv-patched skill install committing-with-commitlint
 ```
 
 ### Copilot Atuin and Figxit compatibility
+
+The managed Atuin configuration enables output capture (including its PTY proxy
+and daemon dependencies) and agent thread capture. Restart the daemon and open a
+new shell after activation. Past agent threads can be imported separately with
+`atuin threads import`.
 
 The Copilot Atuin hook discovers clients on PATH and in standard Homebrew/Nix
 locations and selects a version matching a healthy running daemon. Set

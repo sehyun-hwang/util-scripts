@@ -228,11 +228,11 @@
           };
           vscodeVersion = vscodePkgs.vscode.version;
           vscodeCommit = vscodePkgs.vscode.rev;
-          vscodeSource = pkgs.fetchFromGitHub {
+          vscodeSource = builtins.fetchTree {
+            type = "github";
             owner = "microsoft";
             repo = "vscode";
             rev = vscodeCommit;
-            hash = "sha256-79VGSStnb5X32OoSo3NNh62Gbv6JHGtYqgJRP/3+FHA=";
           };
           vscodeAppRoot = if pkgs.stdenv.hostPlatform.isDarwin
             then "${vscodePkgs.vscode}/Applications/Visual Studio Code.app/Contents/Resources/app"
@@ -244,7 +244,10 @@
             src = vscodeSource;
             cargoRoot = "cli";
             buildAndTestSubdir = "cli";
-            cargoHash = "sha256-qubW1HgtP1NxoBL9SuPo0j4zJjuO7ylaZu8FUqJPEHQ=";
+            cargoLock = {
+              lockFile = "${vscodeSource.outPath}/cli/Cargo.lock";
+              allowBuiltinFetchGit = true;
+            };
             nativeBuildInputs = [ pkgs.jq pkgs.pkg-config ];
             buildInputs = [ pkgs.openssl pkgs.zlib ];
             VSCODE_CLI_PRODUCT_JSON = "${vscodeAppRoot}/product.json";
@@ -320,9 +323,10 @@
             python ${./shell/merge-starship.py} no-nerd-font.toml no-runtime-versions.toml ${./shell/starship.toml} "$out"
           '';
 
-          gitConfig = pkgs.runCommand "util-scripts-git-config" {} ''
-            sed 's|%s|${pkgs.gh}/bin/gh|g' ${./shell/gitconfig} > "$out"
-          '';
+          gitConfig = pkgs.writeText "util-scripts-git-config" (
+            builtins.replaceStrings [ "%s" ] [ (lib.getExe pkgs.gh) ]
+              (builtins.readFile ./shell/gitconfig)
+          );
 
           amphetamineHelper = lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
             app = pkgs.stdenv.mkDerivation {
